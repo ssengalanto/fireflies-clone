@@ -37,15 +37,25 @@ describe('meetingKeys', () => {
     ])
   })
 
+  it('transcribe(id) nests under detail(id)', () => {
+    expect(meetingKeys.transcribe('mtg_1')).toEqual([
+      'meeting',
+      'detail',
+      'mtg_1',
+      'transcribe',
+    ])
+  })
+
   it('produces stable JSON across repeated calls with equivalent inputs', () => {
     const a = meetingKeys.list({ search: 'x', status: 'all' })
     const b = meetingKeys.list({ search: 'x', status: 'all' })
     expect(JSON.stringify(a)).toBe(JSON.stringify(b))
   })
 
-  it('detail(id) is a prefix of summary(id) and actionItems(id)', () => {
+  it('detail(id) is a prefix of summary(id), actionItems(id), and transcribe(id)', () => {
     const id = 'mtg_42'
     expect(meetingKeys.summary(id).slice(0, 3)).toEqual(meetingKeys.detail(id))
     expect(meetingKeys.actionItems(id).slice(0, 3)).toEqual(meetingKeys.detail(id))
+    expect(meetingKeys.transcribe(id).slice(0, 3)).toEqual(meetingKeys.detail(id))
   })
 })
