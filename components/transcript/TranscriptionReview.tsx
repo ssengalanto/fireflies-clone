@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { TranscriptEditor } from '@/components/transcript/TranscriptEditor'
 import {
   Dialog,
   DialogContent,
@@ -12,7 +13,6 @@ import {
 } from '@/components/ui/dialog'
 import { useMeeting } from '@/lib/hooks/useMeeting'
 import { useTranscribeRecording } from '@/lib/hooks/useTranscribeRecording'
-import { useUpdateTranscript } from '@/lib/hooks/useUpdateTranscript'
 
 export interface TranscriptionReviewProps {
   meetingId: string
@@ -21,14 +21,20 @@ export interface TranscriptionReviewProps {
 }
 
 /**
- * Orchestrates the auto-transcribe-and-save flow that runs after the user
- * stops a recording.
+ * Orchestrates the auto-transcribe-then-review flow that runs after the
+ * user stops a recording.
  *
  * Contract: the parent owns the `audioBlob` state (lifted out of
- * `RecordingControls`) and resets it via `onSettled()` after this component
- * finishes — success or failure. Each distinct `Blob` reference triggers
- * exactly one upload, gated on whether the meeting already has a transcript
- * (FR-005 replace-confirm).
+ * `RecordingControls`) and resets it via `onSettled()` after the user
+ * confirms the produced transcript through `TranscriptEditor`'s Save
+ * button. Each distinct `Blob` reference triggers exactly one upload,
+ * gated on whether the meeting already has a transcript (FR-005
+ * replace-confirm).
+ *
+ * Per US2: the auto-produced text is *not* committed to the meeting until
+ * the user clicks Save. If the user navigates away without saving, the
+ * produced text is discarded and the meeting's existing transcript (if
+ * any) is left untouched.
  */
 export function TranscriptionReview({
   meetingId,
@@ -37,23 +43,23 @@ export function TranscriptionReview({
 }: TranscriptionReviewProps) {
   const { data: meeting } = useMeeting(meetingId)
   const { trigger: transcribe, isMutating } = useTranscribeRecording(meetingId)
-  const { trigger: save } = useUpdateTranscript(meetingId)
 
-  // Tracks which Blob reference we've already started processing so a
-  // re-render with the same `audioBlob` prop doesn't fire a second upload.
   const processedRef = useRef<Blob | null>(null)
   const [pendingBlob, setPendingBlob] = useState<Blob | null>(null)
+  const [producedText, setProducedText] = useState<string | null>(null)
 
   const runUpload = useCallback(
     async (blob: Blob) => {
       try {
         const result = await transcribe(blob)
-        await save(result.transcript)
-      } finally {
+        setProducedText(result.transcript)
+      } catch {
+        // US3 will refine the failure surface; until then, just clear the
+        // pending blob so the parent isn't stuck.
         onSettled()
       }
     },
-    [transcribe, save, onSettled],
+    [transcribe, onSettled],
   )
 
   useEffect(() => {
@@ -80,6 +86,11 @@ export function TranscriptionReview({
     onSettled()
   }
 
+  const onSaved = () => {
+    setProducedText(null)
+    onSettled()
+  }
+
   return (
     <>
       {isMutating && (
@@ -91,6 +102,14 @@ export function TranscriptionReview({
           <span className="record-dot" aria-hidden="true" />
           Transcribing recording…
         </div>
+      )}
+
+      {producedText !== null && (
+        <TranscriptEditor
+          meetingId={meetingId}
+          initialValue={producedText}
+          onSaved={onSaved}
+        />
       )}
 
       <Dialog

@@ -106,7 +106,7 @@ describe('TranscriptionReview — replace-confirm (US1)', () => {
     expect(transcribe).not.toHaveBeenCalled()
   })
 
-  it('Replace → fires transcribe with the pending blob', async () => {
+  it('Replace → fires transcribe with the pending blob, then mounts the editor (US2)', async () => {
     const { transcribe, save } = setupWithExisting('Existing transcript.')
     const onSettled = jest.fn()
     const blob = makeBlob()
@@ -124,8 +124,15 @@ describe('TranscriptionReview — replace-confirm (US1)', () => {
 
     await waitFor(() => expect(transcribe).toHaveBeenCalledTimes(1))
     expect(transcribe).toHaveBeenCalledWith(blob)
-    await waitFor(() => expect(save).toHaveBeenCalledWith('fresh text'))
-    await waitFor(() => expect(onSettled).toHaveBeenCalledTimes(1))
+
+    // Under US2 the produced text lands in the editor for review. Save is
+    // gated behind the editor's submit button — no auto-save.
+    const textarea = (await screen.findByLabelText(/transcript/i)) as
+      | HTMLTextAreaElement
+      | HTMLInputElement
+    expect(textarea.value).toBe('fresh text')
+    expect(save).not.toHaveBeenCalled()
+    expect(onSettled).not.toHaveBeenCalled()
   })
 
   it('Keep current → no transcribe call; onSettled fires so the parent can clear the blob', async () => {

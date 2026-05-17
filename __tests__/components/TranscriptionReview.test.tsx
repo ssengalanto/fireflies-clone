@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
 import { TranscriptionReview } from '@/components/transcript/TranscriptionReview'
 import { useMeeting } from '@/lib/hooks/useMeeting'
@@ -80,7 +81,7 @@ beforeEach(() => {
   mockUseSave.mockReset()
 })
 
-describe('TranscriptionReview — happy path (US1)', () => {
+describe('TranscriptionReview — review-then-save (US2)', () => {
   it('does not fire transcribe when audioBlob is null', () => {
     const { transcribe } = setup()
     const onSettled = jest.fn()
@@ -96,7 +97,7 @@ describe('TranscriptionReview — happy path (US1)', () => {
     expect(onSettled).not.toHaveBeenCalled()
   })
 
-  it('fires transcribe exactly once when audioBlob transitions from null → Blob', async () => {
+  it('fires transcribe exactly once and does NOT auto-save', async () => {
     const { transcribe, save } = setup()
     const onSettled = jest.fn()
     const blob = makeBlob()
@@ -122,10 +123,80 @@ describe('TranscriptionReview — happy path (US1)', () => {
 
     await waitFor(() => expect(transcribe).toHaveBeenCalledTimes(1))
     expect(transcribe).toHaveBeenCalledWith(blob)
-    await waitFor(() =>
-      expect(save).toHaveBeenCalledWith('Alice: hi.'),
+
+    // Crucially: save must NOT fire automatically. The user has to confirm
+    // via the editor's Save button (US2 review gate).
+    await waitFor(() => expect(transcribe).toHaveBeenCalled())
+    expect(save).not.toHaveBeenCalled()
+    expect(onSettled).not.toHaveBeenCalled()
+  })
+
+  it('mounts TranscriptEditor with the produced text as initialValue after transcribe resolves', async () => {
+    setup({
+      transcribeResult: { transcript: 'Auto-produced text.', durationSeconds: 5 },
+    })
+
+    render(
+      <TranscriptionReview
+        meetingId="mtg_1"
+        audioBlob={makeBlob()}
+        onSettled={jest.fn()}
+      />,
+      { wrapper: createTestWrapper() },
     )
+
+    const textarea = (await screen.findByLabelText(/transcript/i)) as
+      | HTMLTextAreaElement
+      | HTMLInputElement
+    expect(textarea.value).toBe('Auto-produced text.')
+  })
+
+  it('calls onSettled when the editor reports onSaved (user confirmed the edit)', async () => {
+    const { save } = setup({
+      transcribeResult: { transcript: 'Auto-produced text.', durationSeconds: 5 },
+    })
+    save.mockResolvedValue(undefined)
+    const onSettled = jest.fn()
+
+    render(
+      <TranscriptionReview
+        meetingId="mtg_1"
+        audioBlob={makeBlob()}
+        onSettled={onSettled}
+      />,
+      { wrapper: createTestWrapper() },
+    )
+
+    await screen.findByLabelText(/transcript/i)
+
+    // The editor's Save button submits the form, which awaits trigger()
+    // (mocked save) and then calls onSaved → onSettled.
+    await userEvent.click(screen.getByRole('button', { name: /save transcript/i }))
+
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1))
     await waitFor(() => expect(onSettled).toHaveBeenCalledTimes(1))
+  })
+
+  it('discarding without saving (unmount) leaves the meeting transcript untouched', async () => {
+    const { save } = setup({
+      transcribeResult: { transcript: 'Auto-produced text.', durationSeconds: 5 },
+    })
+    const onSettled = jest.fn()
+
+    const { unmount } = render(
+      <TranscriptionReview
+        meetingId="mtg_1"
+        audioBlob={makeBlob()}
+        onSettled={onSettled}
+      />,
+      { wrapper: createTestWrapper() },
+    )
+
+    await screen.findByLabelText(/transcript/i)
+    unmount()
+
+    expect(save).not.toHaveBeenCalled()
+    expect(onSettled).not.toHaveBeenCalled()
   })
 
   it('renders a role="status" in-progress indicator while isMutating', () => {
@@ -171,7 +242,6 @@ describe('TranscriptionReview — happy path (US1)', () => {
         onSettled={onSettled}
       />,
     )
-    // Still only one trigger call across multiple renders.
     expect(transcribe).toHaveBeenCalledTimes(1)
   })
 })

@@ -44,7 +44,7 @@ beforeEach(() => {
 })
 
 describe('Meeting detail page — auto-transcription wiring', () => {
-  it('flows audioBlob from RecordingControls → TranscriptionReview → PATCH transcript', async () => {
+  it('flows audioBlob from RecordingControls → TranscriptionReview → produced text in the editor (no auto-save)', async () => {
     const blob = new Blob([new Uint8Array(1024)], { type: 'audio/webm' })
     const transcribe = jest.fn().mockResolvedValue({
       transcript: 'Auto-produced transcript.',
@@ -100,12 +100,24 @@ describe('Meeting detail page — auto-transcription wiring', () => {
     ).toBeInTheDocument()
 
     // RecordingControls' useEffect fires onAudioBlob(blob) → setPendingAudio
-    // → TranscriptionReview's effect → transcribe(blob) → save(transcript).
+    // → TranscriptionReview's effect → transcribe(blob). Under US2 the
+    // result then lands in TranscriptEditor as initialValue (no auto-save).
     await waitFor(() => expect(transcribe).toHaveBeenCalledTimes(1))
     expect(transcribe).toHaveBeenCalledWith(blob)
-    await waitFor(() =>
-      expect(save).toHaveBeenCalledWith('Auto-produced transcript.'),
-    )
+
+    // The (now multiple) TranscriptEditor instances on this page all share
+    // the same label; the auto-populated one carries the produced text.
+    await waitFor(() => {
+      const textareas = screen.getAllByLabelText(
+        /transcript/i,
+      ) as HTMLTextAreaElement[]
+      expect(
+        textareas.some((t) => t.value === 'Auto-produced transcript.'),
+      ).toBe(true)
+    })
+
+    // Save must NOT fire automatically — that's the whole point of US2.
+    expect(save).not.toHaveBeenCalled()
   })
 
   it('renders the in-progress indicator while isMutating', () => {
