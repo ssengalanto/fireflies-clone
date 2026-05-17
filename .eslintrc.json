@@ -1,0 +1,19 @@
+{
+  "extends": ["next/core-web-vitals"],
+  "rules": {
+    "import/order": [
+      "warn",
+      {
+        "groups": ["builtin", "external", "internal", "parent", "sibling", "index"],
+        "newlines-between": "always",
+        "alphabetize": { "order": "asc", "caseInsensitive": true }
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["__tests__/**/*", "**/*.test.{ts,tsx}"],
+      "env": { "jest": true }
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+[
+  {
+    "id": "mtg_seed_draft",
+    "title": "Q2 planning kickoff",
+    "participants": ["alice@example.com", "bob@example.com", "carol@example.com"],
+    "date": "2026-05-12T14:00:00.000Z",
+    "durationSeconds": 0,
+    "status": "draft",
+    "transcript": null,
+    "createdAt": "2026-05-12T14:00:00.000Z",
+    "updatedAt": "2026-05-12T14:00:00.000Z"
+  },
+  {
+    "id": "mtg_seed_recorded",
+    "title": "Design review — onboarding flow",
+    "participants": ["alice@example.com", "dan@example.com"],
+    "date": "2026-05-14T10:30:00.000Z",
+    "durationSeconds": 1820,
+    "status": "recorded",
+    "transcript": "Alice: Let's walk through the redesign.\n\nDan: The empty state on the dashboard is the first thing new users see — it needs more guidance. Today it just says 'No meetings yet'. We should add a primary CTA pointing at the new-meeting modal.\n\nAlice: Agreed. Let's also surface a sample meeting card in a muted style so people understand the shape of what they're about to create.",
+    "createdAt": "2026-05-14T10:30:00.000Z",
+    "updatedAt": "2026-05-14T11:01:00.000Z"
+  },
+  {
+    "id": "mtg_seed_summarized",
+    "title": "Engineering all-hands",
+    "participants": ["alice@example.com", "bob@example.com", "carol@example.com", "dan@example.com"],
+    "date": "2026-05-15T16:00:00.000Z",
+    "durationSeconds": 2640,
+    "status": "summarized",
+    "transcript": "Carol: Welcome everyone. Three things on the agenda: the deployment incident, hiring updates, and the Q3 roadmap draft.\n\nBob: On the deploy — root cause was the migration script timing out on the largest tenant. We've split it into batches and added a circuit breaker. Postmortem doc is in the team folder.\n\nCarol: Good. Hiring — two offers out, both should close by Friday. Roadmap — sending the draft to leads tomorrow for feedback.",
+    "createdAt": "2026-05-15T16:00:00.000Z",
+    "updatedAt": "2026-05-15T16:50:00.000Z"
+  }
+]
