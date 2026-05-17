@@ -5,7 +5,7 @@ Setup, run, and develop the Fireflies clone locally. Pairs with `plan.md` (the a
 ## Prerequisites
 
 - **Node.js 20+** (Next.js 14 minimum runtime)
-- **pnpm 8+** (preferred — the `tasks.md` scripts assume `pnpm`; `npm` works if you adapt the commands)
+- **pnpm 10+** (preferred — pinned via the `packageManager` field in `package.json`; the `tasks.md` scripts assume `pnpm`; `npm` works if you adapt the commands)
 - **An Anthropic API key** with access to `claude-opus-4-7`. The key never reaches the browser.
 
 ## Initial setup
