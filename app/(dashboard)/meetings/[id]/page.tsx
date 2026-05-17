@@ -132,7 +132,9 @@ export default function MeetingDetailPage({
             }}
           />
 
-          <TranscriptEditor meetingId={meeting.id} />
+          {pendingAudio === null && (
+            <TranscriptEditor meetingId={meeting.id} />
+          )}
         </section>
       ) : (
         <div className="mt-8 space-y-10">
