@@ -1,6 +1,9 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 
+import { SWRProvider } from '@/lib/providers/SWRProvider'
+import { StoreProvider } from '@/lib/providers/StoreProvider'
+
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -12,7 +15,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body className="min-h-screen bg-background font-sans antialiased">
-        {children}
+        <SWRProvider>
+          <StoreProvider>{children}</StoreProvider>
+        </SWRProvider>
       </body>
     </html>
   )

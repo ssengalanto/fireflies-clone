@@ -31,10 +31,14 @@ if (!global.navigator.mediaDevices) {
   })
 }
 
-// Stable randomUUID for tests — overridden per-test where determinism matters.
+// jsdom's `crypto` shim omits `randomUUID`. Back it with Node's real one so
+// every call returns a fresh value — tests that need determinism stub it
+// per-suite via `jest.spyOn(global.crypto, 'randomUUID')`.
+import { randomUUID as nodeRandomUUID } from 'node:crypto'
+
 if (!global.crypto?.randomUUID) {
   Object.defineProperty(global.crypto ?? (global.crypto = {} as Crypto), 'randomUUID', {
-    value: () => 'test-uuid-0000',
+    value: () => nodeRandomUUID(),
     configurable: true,
   })
 }
