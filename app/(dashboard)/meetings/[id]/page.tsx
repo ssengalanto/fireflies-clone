@@ -3,6 +3,7 @@
 import Link from 'next/link'
 
 import { RecordingControls } from '@/components/recording/RecordingControls'
+import { SummaryView } from '@/components/summary/SummaryView'
 import { TranscriptEditor } from '@/components/transcript/TranscriptEditor'
 import { TranscriptView } from '@/components/transcript/TranscriptView'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -79,9 +80,13 @@ export default function MeetingDetailPage({
           <TranscriptEditor meetingId={meeting.id} />
         </section>
       ) : (
-        <section className="space-y-4">
+        <section className="space-y-6">
           <TranscriptView transcript={meeting.transcript} />
-          {/* US2 wires <SummaryView /> here; US3 wires <ActionItems />. */}
+          <SummaryView
+            meetingId={meeting.id}
+            transcript={meeting.transcript}
+          />
+          {/* US3 wires <ActionItems /> here. */}
         </section>
       )}
     </div>
