@@ -6,9 +6,13 @@ import { MeetingCard } from '@/components/meetings/MeetingCard'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useMeetings } from '@/lib/hooks/useMeetings'
+import { useMeetingStore } from '@/lib/store/meetingStore'
 
 export function MeetingList() {
   const { data, error, isLoading, isValidating, size, setSize } = useMeetings()
+  const filters = useMeetingStore((s) => s.filters)
+  const hasActiveFilters =
+    filters.search.trim().length > 0 || filters.status !== 'all'
 
   if (isLoading && !data) {
     return (
@@ -34,7 +38,11 @@ export function MeetingList() {
 
   if (items.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">No meetings yet.</p>
+      <p className="text-sm text-muted-foreground">
+        {hasActiveFilters
+          ? 'No meetings match your filters.'
+          : 'No meetings yet.'}
+      </p>
     )
   }
 

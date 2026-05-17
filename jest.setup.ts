@@ -20,6 +20,24 @@ class MediaRecorderShim {
 // @ts-expect-error -- assigning a stub to the global slot
 global.MediaRecorder = MediaRecorderShim
 
+// Radix UI (Select/Dialog/etc.) calls Element.hasPointerCapture and
+// scrollIntoView during interactions. jsdom 20 doesn't ship them; without
+// these stubs, opening a `<Select>` in a test silently no-ops.
+if (typeof Element !== 'undefined') {
+  if (!Element.prototype.hasPointerCapture) {
+    Element.prototype.hasPointerCapture = () => false
+  }
+  if (!Element.prototype.releasePointerCapture) {
+    Element.prototype.releasePointerCapture = () => undefined
+  }
+  if (!Element.prototype.setPointerCapture) {
+    Element.prototype.setPointerCapture = () => undefined
+  }
+  if (!Element.prototype.scrollIntoView) {
+    Element.prototype.scrollIntoView = () => undefined
+  }
+}
+
 // Skip the `mediaDevices` polyfill under the `node` test environment
 // (API-route tests opt in via the `@jest-environment node` pragma).
 if (

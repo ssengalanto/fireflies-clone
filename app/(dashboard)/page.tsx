@@ -1,5 +1,6 @@
 'use client'
 
+import { MeetingFilters } from '@/components/meetings/MeetingFilters'
 import { MeetingList } from '@/components/meetings/MeetingList'
 import { NewMeetingModal } from '@/components/meetings/NewMeetingModal'
 import { Button } from '@/components/ui/button'
@@ -14,6 +15,7 @@ export default function DashboardPage() {
         <h1 className="text-2xl font-semibold tracking-tight">Meetings</h1>
         <Button onClick={() => openModal('new-meeting')}>New meeting</Button>
       </header>
+      <MeetingFilters />
       <MeetingList />
       <NewMeetingModal />
     </div>

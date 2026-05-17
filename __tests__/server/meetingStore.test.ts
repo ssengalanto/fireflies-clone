@@ -152,5 +152,33 @@ describe('lib/server/meetingStore', () => {
       ]
       expect(new Set(allIds).size).toBe(3)
     })
+
+    it('cursor pagination walks the FILTERED set, not the unfiltered one', () => {
+      // Among the three seeded meetings, two match "standup" (the original
+      // Standup and Standup retro). The non-matching "Roadmap review" must
+      // not appear in any paginated page when the filter is active.
+      const page1 = list({ search: 'standup', limit: 1 })
+      expect(page1.items).toHaveLength(1)
+      expect(/standup/i.test(page1.items[0].title)).toBe(true)
+      expect(page1.nextCursor).toBeTruthy()
+
+      const page2 = list({
+        search: 'standup',
+        limit: 1,
+        cursor: page1.nextCursor!,
+      })
+      expect(page2.items).toHaveLength(1)
+      expect(/standup/i.test(page2.items[0].title)).toBe(true)
+      expect(page2.nextCursor).toBeNull()
+
+      // The unfiltered "Roadmap review" record was not reachable via the
+      // filtered cursor at any point.
+      const filteredIds = [
+        ...page1.items.map((m) => m.id),
+        ...page2.items.map((m) => m.id),
+      ]
+      expect(filteredIds).toHaveLength(2)
+      expect(new Set(filteredIds).size).toBe(2)
+    })
   })
 })

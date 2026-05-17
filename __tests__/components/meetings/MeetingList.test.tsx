@@ -1,7 +1,11 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
 import { MeetingList } from '@/components/meetings/MeetingList'
 import { useMeetings } from '@/lib/hooks/useMeetings'
+import { useMeetingStore } from '@/lib/store/meetingStore'
+
+import { resetStores } from '../../utils/stores'
 
 jest.mock('@/lib/hooks/useMeetings')
 const mockUseMeetings = useMeetings as jest.MockedFunction<typeof useMeetings>
@@ -33,6 +37,7 @@ function mockReturn(overrides: Partial<ReturnType<typeof useMeetings>>) {
 
 beforeEach(() => {
   mockUseMeetings.mockReset()
+  resetStores()
 })
 
 describe('<MeetingList />', () => {
@@ -56,15 +61,63 @@ describe('<MeetingList />', () => {
     expect(screen.getByRole('heading', { name: /roadmap/i })).toBeInTheDocument()
   })
 
-  it('renders an empty state when there are no meetings', () => {
+  it('renders the "no meetings yet" empty state when there are no filters', () => {
     mockReturn({ data: [{ items: [], nextCursor: null }] })
     render(<MeetingList />)
     expect(screen.getByText(/no meetings yet/i)).toBeInTheDocument()
+    expect(
+      screen.queryByText(/no meetings match your filters/i),
+    ).not.toBeInTheDocument()
+  })
+
+  it('renders the "no meetings match your filters" empty state when filters are active', () => {
+    act(() =>
+      useMeetingStore.setState((s) => ({
+        filters: { ...s.filters, search: 'standup' },
+      })),
+    )
+    mockReturn({ data: [{ items: [], nextCursor: null }] })
+    render(<MeetingList />)
+    expect(
+      screen.getByText(/no meetings match your filters/i),
+    ).toBeInTheDocument()
   })
 
   it('renders an error state with retry affordance when the hook errors', () => {
     mockReturn({ error: new Error('boom') })
     render(<MeetingList />)
     expect(screen.getByText(/boom/i)).toBeInTheDocument()
+  })
+
+  it('shows a Load more button when nextCursor exists and calls setSize on click', async () => {
+    const setSize = jest.fn()
+    mockReturn({
+      data: [
+        {
+          items: [meeting('1')],
+          nextCursor: 'cur_1',
+        },
+      ],
+      size: 1,
+      setSize: setSize as any,
+    })
+
+    render(<MeetingList />)
+    const loadMore = screen.getByRole('button', { name: /load more/i })
+    expect(loadMore).toBeInTheDocument()
+
+    await userEvent.click(loadMore)
+    expect(setSize).toHaveBeenCalledWith(2)
+  })
+
+  it('omits the Load more button when nextCursor is null', () => {
+    mockReturn({
+      data: [{ items: [meeting('1')], nextCursor: null }],
+      size: 1,
+    })
+    render(<MeetingList />)
+    expect(
+      screen.queryByRole('button', { name: /load more/i }),
+    ).not.toBeInTheDocument()
   })
 })
