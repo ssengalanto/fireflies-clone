@@ -1,8 +1,8 @@
 # Fireflies Clone
 
-A single-user, local-first meeting capture app. Record audio in the browser, supply a transcript, then have Claude produce a streaming summary and a structured list of action items. Built TDD-first with Next.js 14, SWR, Zustand, react-hook-form, zod, Tailwind, and shadcn/ui.
+A single-user, local-first meeting capture app. Record audio in the browser, get an automatic transcript from Whisper (with an editable review pass), then have Claude produce a streaming summary and a structured list of action items. Built TDD-first with Next.js 14, SWR, Zustand, react-hook-form, zod, Tailwind, and shadcn/ui.
 
-The full spec, design plan, research log, and task list live under [`specs/001-fireflies-clone/`](specs/001-fireflies-clone/).
+The full specs, design plans, research logs, and task lists live under [`specs/001-fireflies-clone/`](specs/001-fireflies-clone/) (baseline) and [`specs/002-recording-transcription/`](specs/002-recording-transcription/) (automatic transcription, layered on top).
 
 ## Setup
 
@@ -57,21 +57,21 @@ lib/store/      ONLY files that import zustand   — UI/session state, never ser
 lib/server/     server-side data store + prompts — used by API routes only
 lib/providers/  SWRProvider, StoreProvider        — mounted at the root layout
 
-app/api/        the wire-level API — `meetings/*`, `claude`, `auth/login`
+app/api/        the wire-level API — `meetings/*`, `claude`, `transcribe`, `auth/login`
 app/(auth)/     unauthenticated routes (login)
 app/(dashboard) protected routes (dashboard, meeting detail); auth gate in layout
 
 components/ui/         shadcn primitives only
 components/meetings/   MeetingCard, MeetingList, MeetingFilters, NewMeetingModal
 components/recording/  RecordingControls, RecordingTimer (MediaRecorder, component-local state)
-components/transcript/ TranscriptView, TranscriptEditor
+components/transcript/ TranscriptView, TranscriptEditor, TranscriptionReview (auto orchestrator), TranscriptionFallback (failure UI)
 components/summary/    SummaryView, ActionItems
 components/auth/       LoginForm
 
 __tests__/      mirrors the source tree; layer-ordered (schemas/, store/, fetchers/, hooks/, components/, api/, server/, security/, utils/)
 ```
 
-The rule the file tree encodes: **if you're about to write `fetch(...)` inside a component or hook test, stop — it belongs in `lib/fetchers/`. If you're about to import `swr` outside `lib/hooks/`, stop — components consume hooks, never SWR directly. If you're about to import `@anthropic-ai/sdk` outside `app/api/claude/route.ts`, stop — there are no exceptions.**
+The rule the file tree encodes: **if you're about to write `fetch(...)` inside a component or hook test, stop — it belongs in `lib/fetchers/`. If you're about to import `swr` outside `lib/hooks/`, stop — components consume hooks, never SWR directly. If you're about to import `@anthropic-ai/sdk` outside `app/api/claude/route.ts` or `openai` outside `app/api/transcribe/route.ts`, stop — there are no exceptions; the security test will fail the build.**
 
 ## Constitution (the four gates)
 
@@ -93,29 +93,41 @@ The conventions live in `.claude/skills/fireflies-*` and are exercised by the te
 5. `useSummaryStream` accumulates chunks into a local `useState<string>` for the live render. When `fetchSummary` resolves, it writes the final string into the SWR cache under `meetingKeys.summary(meetingId)` via `mutate(key, final, { revalidate: false })`.
 6. Re-opening the meeting page reads through `useSummary(meetingId)` — pure cache reader, immutable config (`revalidateIfStale/OnFocus/OnReconnect: false`), no second AI call.
 
+## Automatic transcription end-to-end
+
+1. User clicks **Stop** on `RecordingControls`. `useRecording` finalizes the `MediaRecorder` and exposes the captured `Blob` via its `audioBlob` field.
+2. `RecordingControls` fires its `onAudioBlob(blob)` callback. The meeting detail page lifts the blob into its `pendingAudio` state and passes it to `<TranscriptionReview audioBlob={pendingAudio} />`.
+3. `TranscriptionReview` watches the prop. On a `null → Blob` transition (with a `processedRef` guard so re-renders don't re-fire) it calls `useTranscribeRecording(meetingId).trigger(blob)`.
+4. The fetcher (`lib/fetchers/transcribe.fetcher.ts`) enforces the 25 MB pre-flight cap, builds a `FormData`, and POSTs to `/api/transcribe`. The route reads `process.env.OPENAI_API_KEY` directly and forwards the audio to `client.audio.transcriptions.create({ model: 'whisper-1', response_format: 'verbose_json' })`.
+5. The route classifies the result. Empty `text` → `422 No speech detected`. Every `verbose_json` segment with `no_speech_prob > 0.6` → `422 No speech detected` (catches Whisper's "Bye." / "Thanks for watching!" hallucinations on silent audio). Otherwise → `200 { transcript, durationSeconds }`.
+6. On 200 the produced text becomes the `initialValue` of `<TranscriptEditor>`. The user reviews, edits, clicks **Save transcript**. `useUpdateTranscript` PATCHes the meeting via `/api/meetings/[id]`, the SWR cache updates, and the page transitions to the AI-output branch (summary + action items). The audio `Blob` is dropped from `useRecording` state via `clearAudio()` — never persisted client or server side.
+7. On 4xx/5xx the hook surfaces a typed `TranscriptionError` (`NETWORK | TOO_LARGE | NO_SPEECH | PROVIDER`). `<TranscriptionFallback>` renders the right copy and three affordances (Retry hidden for `TOO_LARGE` / `NO_SPEECH`, since retrying with the same blob would fail the same way). **Enter manually** opens an empty `TranscriptEditor`; **Re-record** remounts `RecordingControls` (forced via a `key={recorderEpoch}` increment) so `useRecording` resets to `idle`.
+
 ## Data persistence
 
-- **Meetings** live in a server-side in-memory `Map<string, Meeting>` (`lib/server/meetingStore.ts`), seeded once per cold start from `data/meetings.seed.json`. The map empties on server restart — acceptable for v1; swap for a JSON write or SQLite if v2 needs durability.
+- **Meetings** live in a server-side in-memory `Map<string, Meeting>` (`lib/server/meetingStore.ts`), seeded once per cold start from `data/meetings.seed.json`. The map empties on server restart — acceptable for v1; swap for a JSON write, SQLite, or Vercel KV if v2 needs durability.
 - **UI state** (filters, in-progress draft, auth session) is persisted client-side via Zustand's `persist` middleware. Selection (`selectedIds`) and wizard step are explicitly excluded — reload should not resurrect them.
 - **Summary / action items** are cached in SWR's in-memory cache. Re-opens are instant; restart blows them away (acceptable since the user can re-trigger generation).
+- **Recorded audio is transient.** It lives only in `useRecording`'s component state (and as the multipart payload of one request to `/api/transcribe`), then it is dropped. There is no audio archive on the client or server — only the produced transcript is persisted.
 
-## Limitations / out of scope for v1
+## Limitations / out of scope
 
 - No real authentication. `/api/auth/login` accepts any valid email + password ≥ 6 chars; the session is the client-side `authStore`. Swap-in seam for a real IdP is the `authStore` + the login route.
 - No cross-device sync. localStorage only.
-- No automatic speech-to-text. The user types or pastes the transcript after stopping the recording.
+- **Transcription is batch, not live.** The audio is uploaded after the user stops the recording; there is no live captioning during capture. Live partials are out of scope.
+- **Maximum recording size is 25 MB** — Whisper's hard cap. On default `MediaRecorder` settings (opus @ ~24 kbps) that is roughly 2+ hours of audio, but on Vercel's Hobby tier the request body cap is 4.5 MB, which effectively caps audio to ~25 minutes. Longer recordings surface the `TranscriptionFallback` with `TOO_LARGE` and Retry hidden.
 - No cross-tab live updates. Best-effort consistency.
 - No durability — server restart empties the meeting store.
 - Mobile browsers are best-effort, not v1 acceptance.
 
-## Test counts at v1 cut
+## Test counts
+
+### v1 cut (baseline, feature 001 only)
 
 ```
 Test Suites: 38 passed, 38 total
 Tests:       233 passed, 233 total
 ```
-
-Broken down by layer:
 
 | Layer | Suites | Tests |
 |---|---|---|
@@ -128,7 +140,26 @@ Broken down by layer:
 | API routes (meetings ×2, claude, auth/login) | 4 | 26 |
 | Security | 1 | 3 (`api-key-isolation`) |
 
-## Time estimate
+### After feature 002 (current)
+
+```
+Test Suites: 52 passed, 52 total
+Tests:       308 passed, 308 total
+```
+
+What feature 002 added on top of v1:
+
+| Layer | New suites | New tests |
+|---|---|---|
+| Schemas (`transcribe.schema`) | 1 | 8 |
+| Fetchers (`transcribe.fetcher`) | 1 | 12 |
+| Hooks (`useTranscribeRecording`, `useRecording` extension for `clearAudio`) | 1 | 6 |
+| Components (`TranscriptionReview` ×5 files, `TranscriptionFallback`, round-trip, downstream, meeting-detail integration, manual-fallback) | 10 | 39 |
+| API routes (`transcribe.route`) | 1 | 9 |
+| Cache keys + Security (extensions to existing files) | — | 4 |
+| **Total added** | **14** | **75** |
+
+## Time estimate (by hand / no AI-assist)
 
 ### Feature 001 — Fireflies clone baseline (125 tasks)
 
@@ -160,7 +191,7 @@ Layered on top of 001 — replaces the manual-paste path with an automatic speec
 | 6 — Polish (coverage, README, security) | 5 | 1 h |
 | **Total** | **36** | **~11 h** |
 
-## Actual time spent
+## Actual time spent (AI-assisted, with the same plan)
 
 Derived from git history:
 
