@@ -10,11 +10,12 @@ Prerequisites:
 - **Node.js 20+** (Next.js 14 minimum)
 - **pnpm 10+**
 - An **Anthropic API key** with access to `claude-opus-4-7` (server-only — never reaches the browser)
+- An **OpenAI API key** with access to `whisper-1` for automatic transcription (server-only — never reaches the browser)
 
 ```bash
 pnpm install
 cp .env.example .env.local
-# edit .env.local and fill in ANTHROPIC_API_KEY
+# edit .env.local and fill in ANTHROPIC_API_KEY and OPENAI_API_KEY
 pnpm dev    # http://localhost:3000
 ```
 
@@ -23,12 +24,14 @@ pnpm dev    # http://localhost:3000
 | Variable | Required | Notes |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | yes | Read once in `app/api/claude/route.ts`. **Never** prefix with `NEXT_PUBLIC_` — that would inline it into the client bundle at build time. |
+| `OPENAI_API_KEY` | yes | Read once in `app/api/transcribe/route.ts` for `whisper-1` automatic transcription. **Never** prefix with `NEXT_PUBLIC_`. |
 | `NEXT_PUBLIC_APP_NAME` | no | Cosmetic; defaults to `"Fireflies Clone"`. |
 
 A static security test (`__tests__/security/api-key-isolation.test.ts`) asserts that:
-1. `@anthropic-ai/sdk` is imported by exactly one file (the route handler).
-2. `process.env.ANTHROPIC_API_KEY` is read directly there.
-3. No `NEXT_PUBLIC_*ANTHROPIC*` variable exists in `.env.example`.
+1. `@anthropic-ai/sdk` is imported by exactly one file (the Claude route handler).
+2. `openai` is imported by exactly one file (the transcribe route handler).
+3. `process.env.ANTHROPIC_API_KEY` and `process.env.OPENAI_API_KEY` are read directly in their respective routes.
+4. No `NEXT_PUBLIC_*ANTHROPIC*` or `NEXT_PUBLIC_*OPENAI*` variable exists in `.env.example`.
 
 ## Scripts
 
