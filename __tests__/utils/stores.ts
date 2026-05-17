@@ -1,3 +1,7 @@
+import {
+  DEFAULT_MEETING_FILTERS,
+  useMeetingStore,
+} from '@/lib/store/meetingStore'
 import { useUIStore } from '@/lib/store/uiStore'
 
 /**
@@ -6,13 +10,19 @@ import { useUIStore } from '@/lib/store/uiStore'
  * lets later tests inherit dirty state from earlier ones.
  *
  * Extended per-story as more stores land:
- * - US1 adds `useMeetingStore` (T032).
- * - US5 adds `useAuthStore`   (T108).
+ * - US5 adds `useAuthStore` (T108).
  */
 export function resetStores(): void {
   useUIStore.setState({
     sidebarOpen: true,
     activeModal: null,
     modalPayload: null,
+  })
+
+  useMeetingStore.setState({
+    selectedIds: [],
+    filters: { ...DEFAULT_MEETING_FILTERS },
+    meetingDraft: null,
+    wizardStep: 0,
   })
 }

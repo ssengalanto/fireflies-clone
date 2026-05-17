@@ -20,7 +20,12 @@ class MediaRecorderShim {
 // @ts-expect-error -- assigning a stub to the global slot
 global.MediaRecorder = MediaRecorderShim
 
-if (!global.navigator.mediaDevices) {
+// Skip the `mediaDevices` polyfill under the `node` test environment
+// (API-route tests opt in via the `@jest-environment node` pragma).
+if (
+  typeof global.navigator !== 'undefined' &&
+  !global.navigator.mediaDevices
+) {
   Object.defineProperty(global.navigator, 'mediaDevices', {
     value: {
       getUserMedia: jest.fn().mockResolvedValue({

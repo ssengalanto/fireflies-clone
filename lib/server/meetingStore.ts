@@ -44,6 +44,16 @@ export async function seedFromFile(): Promise<void> {
   }
 }
 
+/**
+ * Route-level seed gate. Tests start with an empty store — only the
+ * `seedFromFile` unit test exercises the loader directly. Production
+ * route handlers call `ensureSeeded()` to pick up dev fixtures.
+ */
+export async function ensureSeeded(): Promise<void> {
+  if (process.env.JEST_WORKER_ID !== undefined) return
+  await seedFromFile()
+}
+
 export function get(id: string): Meeting | undefined {
   return store.get(id)
 }
