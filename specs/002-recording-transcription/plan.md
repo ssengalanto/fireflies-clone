@@ -1,0 +1,117 @@
+# Implementation Plan: Automatic Transcription from Recording
+
+**Branch**: `002-recording-transcription` | **Date**: 2026-05-18 | **Spec**: [spec.md](./spec.md)
+**Input**: Feature specification from `/specs/002-recording-transcription/spec.md`
+
+## Summary
+
+Replace the v1 manual-paste path with an automatic speech-to-text path. When the user stops a recording, the in-memory `audioBlob` is uploaded to a new server-side route (`POST /api/transcribe`) that calls a hosted speech-to-text provider, returns the produced text, and feeds it into the existing `TranscriptEditor` as the initial value. The user reviews, edits, and saves through the same `useUpdateTranscript` mutation that v1 already shipped — so no persisted shape changes, just a new path that produces the input.
+
+The technical approach hinges on three clean lines:
+
+1. **One provider, one route, one SDK boundary**: speech-to-text uses a different vendor than the existing AI summary/action-item flow. To keep v1's "AI key never reaches the browser" gate intact, the new SDK is sequestered in exactly one server file (`app/api/transcribe/route.ts`) and verified by the same kind of static grep gate as `@anthropic-ai/sdk`.
+2. **The audio never leaves UI-state**: the captured `Blob` exists only inside `useRecording` until it is uploaded; it is never written to SWR, Zustand, or any persisted store. Once `/api/transcribe` returns, the blob reference is dropped.
+3. **The auto path produces, the existing path persists**: the produced text is dropped into the existing `TranscriptEditor` as `initialValue`. The user's confirmation flows through `useUpdateTranscript` exactly as today. No new write path means no new persistence bugs.
+
+## Technical Context
+
+**Language/Version**: TypeScript 5.4+, Node.js 20+ (unchanged from v1)
+**Primary Dependencies**:
+  - All v1 dependencies remain (`next@^14`, `react@^18`, `swr@^2`, `zustand@^4`, `react-hook-form@^7`, `zod@^3`, `@anthropic-ai/sdk@^0.30+`)
+  - **New**: `openai@^4` — server-only; imported in exactly one file (`app/api/transcribe/route.ts`)
+**Storage**:
+  - No change to durable storage. The in-memory `Map<string, Meeting>` in `lib/server/meetingStore.ts` still owns Meeting/Transcript shape; the transcript field is written through the existing `PATCH /api/meetings/[id]` route.
+  - Audio is **not** stored. It exists as a `Blob` in `useRecording`'s state, is consumed once by the upload, and is dropped on success or failure.
+**Testing**: Same as v1 — `jest@^29`, `@testing-library/react@^16`, `@testing-library/user-event@^14`, `@testing-library/jest-dom@^6`, `jsdom` with a `MediaRecorder` polyfill. The polyfill is extended to expose a working `Blob` shape for upload tests, and `FormData` (already supported in jsdom) is exercised in the new fetcher tests.
+**Target Platform**: Same as v1 — latest two versions of Chrome, Safari, Firefox, Edge on desktop. Safari produces `audio/mp4`; Chrome/Firefox produce `audio/webm; codecs=opus`. Both are accepted by the speech-to-text provider; the client sends the blob with its native mime type.
+**Project Type**: Web application (Next.js App Router, fullstack in one project). Unchanged.
+**Performance Goals**:
+  - Produced transcript visible to the user within 15 seconds for recordings up to 5 minutes on broadband (SC-002)
+  - Re-opening a meeting with a saved transcript shows it instantly and runs no transcription request (SC-005, reuses v1's caching guarantee)
+**Constraints**:
+  - `OPENAI_API_KEY` is server-only — never inlined into any `NEXT_PUBLIC_*` var, never imported from a client component (constitution gate, parallel to the existing Anthropic gate)
+  - Audio cap: **25 MB** uploaded payload (the provider's hard limit). Recordings beyond that are rejected at stop time with a clear message (FR-011).
+  - No audio is persisted client-side or server-side past a single request lifetime (FR-015, SC-007).
+  - TDD discipline unchanged: schema → fetcher → hook → component, failing test before any implementation.
+**Scale/Scope**: One transcription per meeting per recording session; ~3 new React surfaces (review banner, error fallback, "re-record will replace" confirm dialog); one new API route; one new schema; one new fetcher; one new hook; one new security test.
+
+## Constitution Check
+
+*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+
+The repo's `.specify/memory/constitution.md` is still the unfilled template. The project's effective constitution is the four `fireflies-*` skills under `.claude/skills/` plus the four invariants verified by `__tests__/security/api-key-isolation.test.ts`. The gates below are derived from those and are testable against this plan.
+
+| Gate | Source | Verdict | Notes |
+|---|---|---|---|
+| **TDD discipline** — failing test before implementation, ordered schema → fetcher → hook → component | `fireflies-tdd` | ✅ Pass | The new artifacts in this feature each get a failing test first. The ordering is recorded in `tasks.md` (generated by `/speckit-tasks`). |
+| **Server-state vs. UI-state separation** | `fireflies-swr` | ✅ Pass | The `audioBlob` and the auto-generated transcript draft are UI-state and live in component / hook local state; they never enter SWR. Only the *confirmed* transcript flows through SWR (via existing `useUpdateTranscript`). |
+| **Speech-to-text key never reaches the browser** | `fireflies-claude-api` pattern, extended | ✅ Pass | `openai` SDK is imported only in `app/api/transcribe/route.ts`. `OPENAI_API_KEY` has no `NEXT_PUBLIC_` prefix. The route reads `process.env.OPENAI_API_KEY` directly. The security test (`api-key-isolation.test.ts`) gains parallel assertions. |
+| **Anthropic key isolation unbroken** | `fireflies-claude-api` | ✅ Pass | This feature adds a *new* server route; it does not import or move anything from `app/api/claude/route.ts`. The Anthropic-side invariants in the existing security test remain green. |
+| **Forms chain: schema → resolver → RHF → useSWRMutation** | `fireflies-forms` | ✅ Pass | The user-facing edit step still uses `TranscriptEditor` (already RHF + zod + `useSWRMutation` via `useUpdateTranscript`). The new `useTranscribeRecording` hook is a `useSWRMutation` that takes a `Blob` and returns the produced text — it is not a form hook, but it follows the project's "one hook owns the whole pipeline" rule. |
+| **SWR conventions** — cache key factory entries, immutable config for immutable outputs, `rollbackOnError: true` on mutations with optimistic UI | `fireflies-swr` | ✅ Pass | `useTranscribeRecording` does **not** cache the result (transcription is one-shot, not a queryable resource), so `useSWRMutation` is used with a synthetic key. The produced text is handed to the existing transcript mutation, which writes through the existing meeting cache key — no new key shape needed. |
+| **Zustand conventions** — no server data in stores, persist only what survives reload | `fireflies-zustand` | ✅ Pass | Two new pieces of UI state — "is the auto path still running?" and "did it fail with which reason?" — live in `uiStore` (no persist). The audio blob does not enter any store. |
+
+**Result**: All gates pass. No complexity-tracking entries needed.
+
+## Project Structure
+
+### Documentation (this feature)
+
+```text
+specs/002-recording-transcription/
+├── plan.md              # This file
+├── spec.md              # Feature spec (already exists)
+├── research.md          # Phase 0 — provider choice, format, size cap, fallback design
+├── data-model.md        # Phase 1 — entities (mostly: what's transient vs persisted)
+├── quickstart.md        # Phase 1 — env vars, dev loop, TDD order
+├── contracts/
+│   └── transcribe.md    # Phase 1 — POST /api/transcribe wire contract
+├── checklists/
+│   └── requirements.md  # Quality checklist (from /speckit-specify, already passing)
+└── tasks.md             # Phase 2 — generated by /speckit-tasks (not by this command)
+```
+
+### Source Code (repository root)
+
+This feature adds files to the existing Next.js project; it does not change the project structure.
+
+```text
+fireflies-clone/
+├── app/
+│   └── api/
+│       └── transcribe/
+│           └── route.ts                        # NEW — the ONLY file importing `openai`
+├── components/
+│   └── transcript/
+│       ├── TranscriptionReview.tsx             # NEW — orchestrates auto → review → save on the meeting detail page
+│       ├── TranscriptionFallback.tsx           # NEW — error state with Retry + Enter-manually + Re-record buttons
+│       └── TranscriptEditor.tsx                # EXISTING — gains an `initialValue` callsite from auto-transcription
+├── lib/
+│   ├── api/
+│   │   └── cacheKeys.ts                        # EXISTING — gains `transcribe(meetingId)` as a mutation key (not a fetch key)
+│   ├── schemas/
+│   │   └── transcribe.schema.ts                # NEW — zod schemas for the request input and the response shape
+│   ├── fetchers/
+│   │   └── transcribe.fetcher.ts               # NEW — plain async function; builds FormData; throws typed errors
+│   └── hooks/
+│       └── useTranscribeRecording.ts           # NEW — useSWRMutation wrapper around the fetcher; surfaces typed error reasons
+├── __tests__/
+│   ├── schemas/
+│   │   └── transcribe.schema.test.ts           # NEW
+│   ├── hooks/
+│   │   └── useTranscribeRecording.test.tsx     # NEW
+│   ├── components/
+│   │   ├── TranscriptionReview.test.tsx        # NEW
+│   │   └── TranscriptionFallback.test.tsx      # NEW
+│   └── security/
+│       └── api-key-isolation.test.ts           # EXISTING — extend to assert `openai` is only imported in `app/api/transcribe/route.ts` and `OPENAI_API_KEY` has no NEXT_PUBLIC_ leak
+└── .env.local.example                          # EXISTING — gain an `OPENAI_API_KEY=` placeholder line
+```
+
+**Structure Decision**: Reuse the v1 layout exactly. The feature is additive: a new API route, a new schema/fetcher/hook trio, and two new presentational components. The existing `TranscriptEditor` is **not** rewritten — it gains an `initialValue` callsite. The existing `useUpdateTranscript` is the persistence path for both manual and auto-derived transcripts, so summary and action-item flows downstream remain unaware of how the transcript was produced.
+
+The choice to add a **new** route (`/api/transcribe`) rather than fold transcription into the existing `/api/claude` is deliberate: different vendor, different SDK (`openai` vs `@anthropic-ai/sdk`), different transport (multipart vs JSON), and a different content type out (JSON object with `transcript` vs streamed text). Folding them would dilute the "exactly one file imports vendor SDK X" gate that we rely on for key isolation.
+
+## Complexity Tracking
+
+> No constitution violations. This section intentionally empty.
