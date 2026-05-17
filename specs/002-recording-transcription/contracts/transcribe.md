@@ -69,7 +69,16 @@ Returned when the `audio` field's MIME type is not in the accept list above.
 { "error": "No speech detected" }
 ```
 
-Returned when the SDK returns a transcript whose `.trim()` is empty. See research R-008. The client maps this to `TranscriptionError.kind === 'NO_SPEECH'` and shows the corresponding fallback (re-record + manual entry, no retry).
+Returned when either:
+
+1. The SDK's `text` field trims to empty, OR
+2. Every segment in the SDK's `verbose_json` response has `no_speech_prob > 0.6`.
+
+The second case catches Whisper's well-known hallucinations on silent or near-silent audio — the model emits short stock phrases like "Bye.", "Thanks for watching!", "you", or "[Music]" instead of an empty string. Treating those as no-speech avoids saving a fake transcript that doesn't match what the user actually recorded.
+
+The 0.6 threshold matches OpenAI's documented cutoff and WhisperX's default. See research R-008.
+
+The client maps this to `TranscriptionError.kind === 'NO_SPEECH'` and shows the corresponding fallback (re-record + manual entry, no retry).
 
 ### Response 500 — provider failure
 

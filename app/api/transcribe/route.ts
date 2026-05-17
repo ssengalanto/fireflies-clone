@@ -12,6 +12,24 @@ const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 const MODEL = 'whisper-1'
 const MAX_AUDIO_BYTES = 25 * 1024 * 1024
 
+// Whisper hallucinates short phrases ("Bye.", "Thanks for watching!", "you",
+// "Thank you.", "[Music]") on silent or near-silent audio — the transcript
+// is non-empty but every segment's `no_speech_prob` is high. The 0.6
+// threshold matches WhisperX's default and OpenAI's own documented cutoff.
+const NO_SPEECH_PROB_THRESHOLD = 0.6
+
+interface WhisperSegment {
+  no_speech_prob?: number
+}
+
+function looksLikeSilence(segments: unknown): boolean {
+  if (!Array.isArray(segments) || segments.length === 0) return false
+  return segments.every((seg) => {
+    const prob = (seg as WhisperSegment | null)?.no_speech_prob
+    return typeof prob === 'number' && prob > NO_SPEECH_PROB_THRESHOLD
+  })
+}
+
 export const SUPPORTED_AUDIO_MIME = [
   'audio/webm',
   'audio/mp4',
@@ -60,13 +78,13 @@ export async function POST(req: Request): Promise<Response> {
     )
   }
 
-  let result: { text?: unknown; duration?: unknown }
+  let result: { text?: unknown; duration?: unknown; segments?: unknown }
   try {
     result = (await client.audio.transcriptions.create({
       file: audio,
       model: MODEL,
       response_format: 'verbose_json',
-    })) as { text?: unknown; duration?: unknown }
+    })) as { text?: unknown; duration?: unknown; segments?: unknown }
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('[transcribe.route] SDK error:', err)
@@ -78,7 +96,7 @@ export async function POST(req: Request): Promise<Response> {
 
   const transcript =
     typeof result.text === 'string' ? result.text.trim() : ''
-  if (transcript.length === 0) {
+  if (transcript.length === 0 || looksLikeSilence(result.segments)) {
     return NextResponse.json(
       { error: 'No speech detected' },
       { status: 422 },

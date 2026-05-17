@@ -124,15 +124,24 @@ A typed `TranscriptionError` union (`NETWORK | TOO_LARGE | NO_SPEECH | PROVIDER`
 
 ## R-008 — Detecting "no speech detected"
 
-**Decision**: The server treats a response from `whisper-1` whose transcribed text is empty (or whitespace-only, after `.trim()`) as **no speech detected**, and returns HTTP `422` with `{ "error": "No speech detected" }`. The client maps `422` to `TranscriptionError.NO_SPEECH`.
+**Decision**: The server returns HTTP `422 { "error": "No speech detected" }` when either:
+
+1. The Whisper response's `text` trims to empty, **or**
+2. Every segment in the `verbose_json` response has `no_speech_prob > 0.6`.
+
+The client maps `422` to `TranscriptionError.NO_SPEECH`.
 
 **Rationale**:
-- Whisper does not surface a "low confidence / silent" flag in its hosted response; an empty string is the practical signal.
+- Whisper rarely returns an empty `text` on silent audio. Instead it **hallucinates** a small set of stock phrases — "Bye.", "Thanks for watching!", "you", "Thank you.", "[Music]" — that are clearly not what the user said. The empty-string check alone would let those through and silently save a fake transcript.
+- The `no_speech_prob` field is emitted on every segment when we request `response_format: 'verbose_json'` (which we already do). It is the model's own probability that the segment is silent. `> 0.6` is OpenAI's documented threshold and matches WhisperX's default.
+- We check "every segment > 0.6" rather than "any segment > 0.6" so that a recording with some silence at the start and real speech in the middle still produces a transcript. Only when the *entire* recording is classified as silence do we reject.
 - `422 Unprocessable Entity` is the closest semantic match — the request was valid, but no transcript could be produced. `200 + empty transcript` is rejected because it would force the client to recognise the empty-string case at every callsite, and `4xx` makes it impossible to confuse with success.
 
 **Alternatives considered**:
 - **Use 204 No Content**: rejected — `204` is for "success, no body", which is not what happened.
 - **Use 400**: rejected — `400` suggests the client did something wrong. The client did everything right; the audio was unprocessable.
+- **Blocklist of known hallucination phrases**: rejected as brittle (the list drifts with model updates and varies by language). `no_speech_prob` is the model's own signal and degrades gracefully.
+- **Combine `no_speech_prob` with `avg_logprob`**: considered. Adding a second threshold made the rule harder to reason about without catching cases the simpler rule missed. Defer until we have evidence the simpler rule is insufficient.
 
 ---
 
