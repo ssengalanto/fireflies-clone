@@ -24,7 +24,7 @@ pnpm dev    # http://localhost:3000
 | Variable | Required | Notes |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | yes | Read once in `app/api/claude/route.ts`. **Never** prefix with `NEXT_PUBLIC_` — that would inline it into the client bundle at build time. |
-| `OPENAI_API_KEY` | yes | Read once in `app/api/transcribe/route.ts` for `whisper-1` automatic transcription. **Never** prefix with `NEXT_PUBLIC_`. |
+| `OPENAI_API_KEY` | yes | Read once in `app/api/transcribe/route.ts` for `whisper-1` automatic transcription. **Never** prefix with `NEXT_PUBLIC_`. See [`specs/002-recording-transcription/contracts/transcribe.md`](specs/002-recording-transcription/contracts/transcribe.md) for the full wire contract. |
 | `NEXT_PUBLIC_APP_NAME` | no | Cosmetic; defaults to `"Fireflies Clone"`. |
 
 A static security test (`__tests__/security/api-key-isolation.test.ts`) asserts that:
@@ -130,6 +130,8 @@ Broken down by layer:
 
 ## Time estimate
 
+### Feature 001 — Fireflies clone baseline (125 tasks)
+
 Built across roughly seven AI-pair sessions following the Speckit workflow (`/speckit-specify` → `/speckit-plan` → `/speckit-tasks` → eight TDD passes for the 125 tasks). Approximate effort if a single developer were to run the same plan by hand:
 
 | Phase | Tasks | Approx. effort |
@@ -144,11 +146,31 @@ Built across roughly seven AI-pair sessions following the Speckit workflow (`/sp
 | 8 — Polish + CI + security | 7 | 1.5 h |
 | **Total** | **125** | **~30 h** |
 
+### Feature 002 — Automatic transcription from recording (36 tasks)
+
+Layered on top of 001 — replaces the manual-paste path with an automatic speech-to-text flow (`whisper-1`), preserves manual entry as the failure fallback, and changes no v1 schemas.
+
+| Phase | Tasks | Approx. effort |
+|---|---|---|
+| 1 — Setup (openai SDK + env) | 2 | 0.5 h |
+| 2 — Foundational (schema, fetcher, hook, route, security gate) | 13 | 4 h |
+| 3 — US1 (auto-transcribe on stop, MVP) | 5 | 2 h |
+| 4 — US2 (review + edit gate) | 4 | 1.5 h |
+| 5 — US3 (failure fallback) | 7 | 2 h |
+| 6 — Polish (coverage, README, security) | 5 | 1 h |
+| **Total** | **36** | **~11 h** |
+
 ## Actual time spent
 
-Derived from git history: first commit `2026-05-17 20:30 +0800` → last commit `2026-05-18 01:29 +0800` ≈ **~5 hours** wall-clock, single contiguous session.
+Derived from git history:
+
+- **Feature 001**: first commit `2026-05-17 20:30 +0800` → tag at `2026-05-18 01:29 +0800` ≈ **~5 hours** wall-clock, single contiguous session.
+- **Feature 002**: appended in the same session immediately after 001, finishing at `2026-05-18 02:50 +0800` ≈ **~1.5 hours** wall-clock for the additive 36 tasks.
+- **Combined**: **~6.5 hours** wall-clock across both features.
 
 ## Where to read next
+
+### Feature 001 — Fireflies clone baseline
 
 - [`specs/001-fireflies-clone/spec.md`](specs/001-fireflies-clone/spec.md) — the WHAT and WHY, technology-agnostic
 - [`specs/001-fireflies-clone/plan.md`](specs/001-fireflies-clone/plan.md) — the architecture and constitution gates
@@ -157,3 +179,13 @@ Derived from git history: first commit `2026-05-17 20:30 +0800` → last commit 
 - [`specs/001-fireflies-clone/contracts/`](specs/001-fireflies-clone/contracts/) — HTTP wire contracts for `/api/meetings/*` and `/api/claude`
 - [`specs/001-fireflies-clone/quickstart.md`](specs/001-fireflies-clone/quickstart.md) — TDD loop walkthrough and troubleshooting
 - [`specs/001-fireflies-clone/tasks.md`](specs/001-fireflies-clone/tasks.md) — the 125-task dependency-ordered build list
+
+### Feature 002 — Automatic transcription from recording
+
+- [`specs/002-recording-transcription/spec.md`](specs/002-recording-transcription/spec.md) — the WHAT and WHY of replacing the manual-paste path
+- [`specs/002-recording-transcription/plan.md`](specs/002-recording-transcription/plan.md) — provider choice, key isolation, and the additive file plan
+- [`specs/002-recording-transcription/research.md`](specs/002-recording-transcription/research.md) — 11 decisions including provider, transport, fallback shape, no-speech detection
+- [`specs/002-recording-transcription/data-model.md`](specs/002-recording-transcription/data-model.md) — what's transient vs persisted; no v1 shape changes
+- [`specs/002-recording-transcription/contracts/transcribe.md`](specs/002-recording-transcription/contracts/transcribe.md) — `POST /api/transcribe` wire contract
+- [`specs/002-recording-transcription/quickstart.md`](specs/002-recording-transcription/quickstart.md) — env, TDD ladder, and the smoke check
+- [`specs/002-recording-transcription/tasks.md`](specs/002-recording-transcription/tasks.md) — the 36-task dependency-ordered build list
