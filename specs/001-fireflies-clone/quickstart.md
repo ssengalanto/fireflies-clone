@@ -127,7 +127,7 @@ If you understand this flow, the rest of the app is straightforward.
 | Optimistic create disappears on error instead of rolling back | `rollbackOnError: true` is missing on the `mutate(...)` call. SWR does NOT rollback by default. |
 | Dashboard refetches on every tab switch | A list-level hook is missing `dedupingInterval` and is letting the default-on `revalidateOnFocus` fire. |
 | Tests pass alone, fail in the full suite | Cache or store leak. Check `createTestWrapper()` is being used and `resetStores()` is in `beforeEach`. |
-| `MediaRecorder is not defined` | Test file isn't picking up `jest.setup.ts` — confirm `setupFilesAfterEach` in `jest.config.ts`. |
+| `MediaRecorder is not defined` | Test file isn't picking up `jest.setup.ts` — confirm `setupFilesAfterEnv` in `jest.config.ts`. |
 
 ## Where to go next
 

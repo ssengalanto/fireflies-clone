@@ -88,7 +88,7 @@ The fetcher returns `ActionItem[]` (never throws on parse failure). `useActionIt
 ## R-005 — Jest setup: what does the test environment look like, and how do we polyfill `MediaRecorder`?
 
 **Decision**:
-- `jest.config.ts` with `testEnvironment: 'jsdom'`, `setupFilesAfterEach: ['<rootDir>/jest.setup.ts']`, path aliases via `moduleNameMapper: { '^@/(.*)$': '<rootDir>/$1' }`, and `ts-jest` transform.
+- `jest.config.ts` with `testEnvironment: 'jsdom'`, `setupFilesAfterEnv: ['<rootDir>/jest.setup.ts']`, path aliases via `moduleNameMapper: { '^@/(.*)$': '<rootDir>/$1' }`, and `ts-jest` transform.
 - `jest.setup.ts` imports `@testing-library/jest-dom` and installs a minimal `MediaRecorder` shim:
 
   ```ts
