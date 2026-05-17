@@ -37,6 +37,7 @@ export default function MeetingDetailPage({
 }) {
   const { data: meeting, error, isLoading } = useMeeting(params.id)
   const [pendingAudio, setPendingAudio] = useState<Blob | null>(null)
+  const [recorderEpoch, setRecorderEpoch] = useState(0)
 
   if (isLoading) {
     return (
@@ -115,13 +116,20 @@ export default function MeetingDetailPage({
           </div>
 
           <div className="rounded-md border border-line bg-surface-1 px-5 py-5">
-            <RecordingControls onAudioBlob={setPendingAudio} />
+            <RecordingControls
+              key={recorderEpoch}
+              onAudioBlob={setPendingAudio}
+            />
           </div>
 
           <TranscriptionReview
             meetingId={meeting.id}
             audioBlob={pendingAudio}
             onSettled={() => setPendingAudio(null)}
+            onReRecord={() => {
+              setPendingAudio(null)
+              setRecorderEpoch((e) => e + 1)
+            }}
           />
 
           <TranscriptEditor meetingId={meeting.id} />

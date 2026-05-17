@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { TranscriptEditor } from '@/components/transcript/TranscriptEditor'
+import { TranscriptionFallback } from '@/components/transcript/TranscriptionFallback'
 import {
   Dialog,
   DialogContent,
@@ -18,11 +19,12 @@ export interface TranscriptionReviewProps {
   meetingId: string
   audioBlob: Blob | null
   onSettled: () => void
+  onReRecord?: () => void
 }
 
 /**
- * Orchestrates the auto-transcribe-then-review flow that runs after the
- * user stops a recording.
+ * Orchestrates the auto-transcribe → review → save flow that runs after
+ * the user stops a recording.
  *
  * Contract: the parent owns the `audioBlob` state (lifted out of
  * `RecordingControls`) and resets it via `onSettled()` after the user
@@ -33,33 +35,50 @@ export interface TranscriptionReviewProps {
  *
  * Per US2: the auto-produced text is *not* committed to the meeting until
  * the user clicks Save. If the user navigates away without saving, the
- * produced text is discarded and the meeting's existing transcript (if
- * any) is left untouched.
+ * produced text is discarded.
+ *
+ * Per US3: when the upload fails, a `TranscriptionFallback` is rendered
+ * instead of the editor. The user picks Retry, Enter manually, or
+ * Re-record. The optional `onReRecord` prop lets the parent reset the
+ * recording subtree back to idle; when omitted, Re-record degrades to
+ * `onSettled` (which at least clears the pending blob).
  */
 export function TranscriptionReview({
   meetingId,
   audioBlob,
   onSettled,
+  onReRecord,
 }: TranscriptionReviewProps) {
   const { data: meeting } = useMeeting(meetingId)
-  const { trigger: transcribe, isMutating } = useTranscribeRecording(meetingId)
+  const { trigger: transcribe, isMutating, error, reset } =
+    useTranscribeRecording(meetingId)
 
   const processedRef = useRef<Blob | null>(null)
   const [pendingBlob, setPendingBlob] = useState<Blob | null>(null)
   const [producedText, setProducedText] = useState<string | null>(null)
+  // Lets the user re-open an empty editor after picking "Enter manually"
+  // from the failure fallback (US3 fallback path).
+  const [manualMode, setManualMode] = useState(false)
+
+  const mountedRef = useRef(true)
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
   const runUpload = useCallback(
     async (blob: Blob) => {
       try {
         const result = await transcribe(blob)
-        setProducedText(result.transcript)
+        if (mountedRef.current) setProducedText(result.transcript)
       } catch {
-        // US3 will refine the failure surface; until then, just clear the
-        // pending blob so the parent isn't stuck.
-        onSettled()
+        // The hook stores the typed error; the render below picks it up
+        // and shows the fallback. No need to do anything here.
       }
     },
-    [transcribe, onSettled],
+    [transcribe],
   )
 
   useEffect(() => {
@@ -88,8 +107,32 @@ export function TranscriptionReview({
 
   const onSaved = () => {
     setProducedText(null)
+    setManualMode(false)
     onSettled()
   }
+
+  const onRetry = () => {
+    reset()
+    if (audioBlob) void runUpload(audioBlob)
+  }
+
+  const onManual = () => {
+    reset()
+    setManualMode(true)
+  }
+
+  const onReRecordClick = () => {
+    reset()
+    setProducedText(null)
+    setManualMode(false)
+    if (onReRecord) onReRecord()
+    else onSettled()
+  }
+
+  const showFallback = error !== undefined && !manualMode
+  const showEditor =
+    !showFallback && (producedText !== null || manualMode)
+  const editorInitialValue = manualMode ? '' : producedText ?? ''
 
   return (
     <>
@@ -104,10 +147,19 @@ export function TranscriptionReview({
         </div>
       )}
 
-      {producedText !== null && (
+      {showFallback && (
+        <TranscriptionFallback
+          error={error}
+          onRetry={onRetry}
+          onManual={onManual}
+          onReRecord={onReRecordClick}
+        />
+      )}
+
+      {showEditor && (
         <TranscriptEditor
           meetingId={meetingId}
-          initialValue={producedText}
+          initialValue={editorInitialValue}
           onSaved={onSaved}
         />
       )}
