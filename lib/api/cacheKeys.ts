@@ -13,4 +13,6 @@ export const meetingKeys = {
   summary: (id: string) => [...meetingKeys.detail(id), 'summary'] as const,
   actionItems: (id: string) =>
     [...meetingKeys.detail(id), 'action-items'] as const,
+  transcribe: (id: string) =>
+    [...meetingKeys.detail(id), 'transcribe'] as const,
 }

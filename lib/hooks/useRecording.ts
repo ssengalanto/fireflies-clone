@@ -12,6 +12,7 @@ export interface UseRecordingReturn {
   pause: () => void
   resume: () => void
   audioBlob: Blob | null
+  clearAudio: () => void
 }
 
 export function useRecording(): UseRecordingReturn {
@@ -76,5 +77,19 @@ export function useRecording(): UseRecordingReturn {
     }, 1000)
   }, [])
 
-  return { status, elapsed, audioBlob, start, stop, pause, resume }
+  const clearAudio = useCallback(() => {
+    setAudioBlob(null)
+    chunksRef.current = []
+  }, [])
+
+  return {
+    status,
+    elapsed,
+    audioBlob,
+    start,
+    stop,
+    pause,
+    resume,
+    clearAudio,
+  }
 }

@@ -58,4 +58,56 @@ describe('api-key isolation', () => {
     }
     expect(content).toMatch(/process\.env\.ANTHROPIC_API_KEY/)
   })
+
+  it("only app/api/transcribe/route.ts may import 'openai'", () => {
+    const sourceDirs = ['app', 'components', 'lib'].map((d) =>
+      path.join(REPO_ROOT, d),
+    )
+    const matches: string[] = []
+    for (const dir of sourceDirs) {
+      for (const file of walk(dir)) {
+        const content = readFileSync(file, 'utf-8')
+        if (/(from\s+['"]openai['"]|require\(['"]openai['"]\))/.test(content)) {
+          matches.push(path.relative(REPO_ROOT, file))
+        }
+      }
+    }
+
+    expect(matches.length).toBeLessThanOrEqual(1)
+    if (matches.length === 1) {
+      expect(matches[0]).toBe(
+        path.join('app', 'api', 'transcribe', 'route.ts'),
+      )
+    }
+  })
+
+  it('no NEXT_PUBLIC_* env var in .env.example contains OPENAI', () => {
+    const envExample = readFileSync(
+      path.join(REPO_ROOT, '.env.example'),
+      'utf-8',
+    )
+    const violations = envExample
+      .split('\n')
+      .filter((line) => /^NEXT_PUBLIC_[^=]*OPENAI/i.test(line))
+    expect(violations).toEqual([])
+  })
+
+  it('app/api/transcribe/route.ts (if present) reads OPENAI_API_KEY directly via process.env', () => {
+    const routePath = path.join(
+      REPO_ROOT,
+      'app',
+      'api',
+      'transcribe',
+      'route.ts',
+    )
+    let content: string
+    try {
+      content = readFileSync(routePath, 'utf-8')
+    } catch {
+      // Route doesn't exist yet. The other transcribe checks are the gate
+      // until it lands.
+      return
+    }
+    expect(content).toMatch(/process\.env\.OPENAI_API_KEY/)
+  })
 })
