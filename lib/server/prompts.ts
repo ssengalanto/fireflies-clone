@@ -13,8 +13,15 @@ export function buildSummaryPrompt(): string {
   ].join(' ')
 }
 
-// US3 (T089) fills this in with the JSON-output instructions. A non-empty
-// placeholder lets the route handler import the symbol today.
 export function buildActionItemsPrompt(): string {
-  return 'You extract structured action items from meeting transcripts. (Full prompt lands in US3.)'
+  return [
+    'You extract structured action items from a meeting transcript.',
+    'Return ONLY a JSON array of objects with this exact shape:',
+    '[{ "text": string, "owner": string | null, "dueDate": string | null }].',
+    '`text` is a single concrete follow-up sentence.',
+    '`owner` is the email or display name of the responsible person, or null if not identified.',
+    '`dueDate` is an ISO 8601 datetime if the transcript states a deadline, or null otherwise.',
+    'Do not wrap the JSON in markdown fences. Do not add prose around the array.',
+    'If the transcript has no clear action items, return [].',
+  ].join(' ')
 }

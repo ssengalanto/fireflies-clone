@@ -5,11 +5,12 @@
 // Mock @anthropic-ai/sdk before importing the route. Jest hoists the
 // jest.mock factory so it runs before any module-level `new Anthropic(...)`.
 const mockStreamFn = jest.fn()
+const mockCreateFn = jest.fn()
 jest.mock('@anthropic-ai/sdk', () => {
   return {
     __esModule: true,
     default: jest.fn().mockImplementation(() => ({
-      messages: { stream: mockStreamFn },
+      messages: { stream: mockStreamFn, create: mockCreateFn },
     })),
   }
 })
@@ -53,7 +54,19 @@ async function readStream(res: Response): Promise<string> {
 
 beforeEach(() => {
   mockStreamFn.mockReset()
+  mockCreateFn.mockReset()
 })
+
+function messageWith(text: string) {
+  return {
+    id: 'msg_test',
+    type: 'message',
+    role: 'assistant',
+    content: [{ type: 'text', text }],
+    model: 'claude-opus-4-7',
+    stop_reason: 'end_turn',
+  }
+}
 
 const validBody = {
   type: 'summary' as const,
@@ -129,5 +142,85 @@ describe('POST /api/claude — summary', () => {
     })
     const res = await POST(malformed)
     expect(res.status).toBe(400)
+  })
+})
+
+const validActionItemsBody = {
+  type: 'action-items' as const,
+  meetingId: 'mtg_42',
+  transcript: 'a'.repeat(60),
+}
+
+describe('POST /api/claude — action items', () => {
+  it('returns parsed ActionItem[] as JSON', async () => {
+    mockCreateFn.mockResolvedValue(
+      messageWith(
+        JSON.stringify([
+          { text: 'Send the deck', owner: null, dueDate: null },
+          { text: 'Follow up with Bob', owner: 'alice@example.com', dueDate: null },
+        ]),
+      ),
+    )
+
+    const res = await POST(jsonReq(validActionItemsBody))
+    expect(res.status).toBe(200)
+    expect(res.headers.get('Content-Type')).toMatch(/application\/json/)
+
+    const body = await res.json()
+    expect(Array.isArray(body)).toBe(true)
+    expect(body).toHaveLength(2)
+    expect(body[0].id).toMatch(/^ai_/)
+    expect(body[0].text).toBe('Send the deck')
+    expect(body[1].owner).toBe('alice@example.com')
+  })
+
+  it('strips markdown fences before parsing', async () => {
+    mockCreateFn.mockResolvedValue(
+      messageWith(
+        '```json\n[{"text":"do x","owner":null,"dueDate":null}]\n```',
+      ),
+    )
+
+    const res = await POST(jsonReq(validActionItemsBody))
+    const body = await res.json()
+    expect(body).toHaveLength(1)
+    expect(body[0].text).toBe('do x')
+  })
+
+  it('returns [] with X-Parse-Fallback header when the model output is unparseable', async () => {
+    mockCreateFn.mockResolvedValue(
+      messageWith('totally not JSON, just words from the model'),
+    )
+
+    const res = await POST(jsonReq(validActionItemsBody))
+    expect(res.status).toBe(200)
+    expect(res.headers.get('X-Parse-Fallback')).toBe('empty-list')
+    const body = await res.json()
+    expect(body).toEqual([])
+  })
+
+  it('returns [] WITHOUT X-Parse-Fallback when the model legitimately returns an empty array', async () => {
+    mockCreateFn.mockResolvedValue(messageWith('[]'))
+    const res = await POST(jsonReq(validActionItemsBody))
+    expect(res.status).toBe(200)
+    expect(res.headers.get('X-Parse-Fallback')).toBeNull()
+    const body = await res.json()
+    expect(body).toEqual([])
+  })
+
+  it('returns 400 when the transcript is too short', async () => {
+    const res = await POST(
+      jsonReq({ ...validActionItemsBody, transcript: 'short' }),
+    )
+    expect(res.status).toBe(400)
+    expect(mockCreateFn).not.toHaveBeenCalled()
+  })
+
+  it('returns 500 when the SDK rejects', async () => {
+    mockCreateFn.mockRejectedValue(new Error('upstream auth failure'))
+    const res = await POST(jsonReq(validActionItemsBody))
+    expect(res.status).toBe(500)
+    const body = await res.json()
+    expect(body.error).toBe('Failed to extract action items')
   })
 })

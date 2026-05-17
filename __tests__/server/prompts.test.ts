@@ -16,9 +16,12 @@ describe('lib/server/prompts', () => {
     expect(prompt).toMatch(/transcript/i)
   })
 
-  it('buildActionItemsPrompt is a non-empty string (stub for US3)', () => {
-    // T089 (US3) fills in the real content; T075 only requires a callable
-    // export so the route handler can import it.
-    expect(typeof buildActionItemsPrompt()).toBe('string')
+  it('buildActionItemsPrompt explicitly instructs the model to return a JSON array', () => {
+    const prompt = buildActionItemsPrompt()
+    expect(prompt).toMatch(/JSON array/i)
+    expect(prompt).toMatch(/text/)
+    expect(prompt).toMatch(/owner/)
+    expect(prompt).toMatch(/dueDate/)
+    expect(prompt).toMatch(/no clear action items.*\[\]/i)
   })
 })

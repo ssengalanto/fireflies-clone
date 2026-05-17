@@ -3,6 +3,7 @@
 import Link from 'next/link'
 
 import { RecordingControls } from '@/components/recording/RecordingControls'
+import { ActionItems } from '@/components/summary/ActionItems'
 import { SummaryView } from '@/components/summary/SummaryView'
 import { TranscriptEditor } from '@/components/transcript/TranscriptEditor'
 import { TranscriptView } from '@/components/transcript/TranscriptView'
@@ -86,7 +87,10 @@ export default function MeetingDetailPage({
             meetingId={meeting.id}
             transcript={meeting.transcript}
           />
-          {/* US3 wires <ActionItems /> here. */}
+          <ActionItems
+            meetingId={meeting.id}
+            transcript={meeting.transcript}
+          />
         </section>
       )}
     </div>
