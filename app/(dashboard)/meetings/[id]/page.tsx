@@ -2,11 +2,13 @@
 
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
+import { useState } from 'react'
 
 import { RecordingControls } from '@/components/recording/RecordingControls'
 import { ActionItems } from '@/components/summary/ActionItems'
 import { SummaryView } from '@/components/summary/SummaryView'
 import { TranscriptEditor } from '@/components/transcript/TranscriptEditor'
+import { TranscriptionReview } from '@/components/transcript/TranscriptionReview'
 import { TranscriptView } from '@/components/transcript/TranscriptView'
 import { useMeeting } from '@/lib/hooks/useMeeting'
 
@@ -34,6 +36,7 @@ export default function MeetingDetailPage({
   params: { id: string }
 }) {
   const { data: meeting, error, isLoading } = useMeeting(params.id)
+  const [pendingAudio, setPendingAudio] = useState<Blob | null>(null)
 
   if (isLoading) {
     return (
@@ -112,12 +115,14 @@ export default function MeetingDetailPage({
           </div>
 
           <div className="rounded-md border border-line bg-surface-1 px-5 py-5">
-            <RecordingControls
-              onAudioBlob={() => {
-                /* v1: audio blob unused; transcript is supplied manually. */
-              }}
-            />
+            <RecordingControls onAudioBlob={setPendingAudio} />
           </div>
+
+          <TranscriptionReview
+            meetingId={meeting.id}
+            audioBlob={pendingAudio}
+            onSettled={() => setPendingAudio(null)}
+          />
 
           <TranscriptEditor meetingId={meeting.id} />
         </section>
