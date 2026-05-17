@@ -7,7 +7,7 @@ export function formatElapsed(seconds: number): string {
 export function RecordingTimer({ elapsed }: { elapsed: number }) {
   return (
     <span
-      className="font-mono text-sm tabular-nums text-muted-foreground"
+      className="num text-base font-medium text-fg"
       aria-label="recording elapsed time"
     >
       {formatElapsed(elapsed)}

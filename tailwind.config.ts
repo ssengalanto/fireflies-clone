@@ -14,7 +14,47 @@ const config: Config = {
       screens: { '2xl': '1400px' },
     },
     extend: {
+      fontFamily: {
+        sans: ['var(--font-mona)', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-mono)', 'JetBrains Mono', 'monospace'],
+      },
+      fontSize: {
+        /* Tighter line-height scale for the denser tech-utility feel */
+        xs: ['0.75rem', { lineHeight: '1rem' }],
+        sm: ['0.8125rem', { lineHeight: '1.25rem' }],
+        base: ['0.875rem', { lineHeight: '1.5rem' }],
+        lg: ['1rem', { lineHeight: '1.5rem' }],
+        xl: ['1.125rem', { lineHeight: '1.5rem' }],
+        '2xl': ['1.375rem', { lineHeight: '1.75rem' }],
+        '3xl': ['1.75rem', { lineHeight: '2rem' }],
+        '4xl': ['2.25rem', { lineHeight: '2.5rem' }],
+        '5xl': ['3rem', { lineHeight: '1' }],
+      },
       colors: {
+        /* Neutral tokens */
+        surface: {
+          DEFAULT: 'hsl(var(--surface))',
+          1: 'hsl(var(--surface-1))',
+          2: 'hsl(var(--surface-2))',
+        },
+        fg: {
+          DEFAULT: 'hsl(var(--fg))',
+          2: 'hsl(var(--fg-2))',
+          3: 'hsl(var(--fg-3))',
+          muted: 'hsl(var(--fg-muted))',
+        },
+        line: {
+          DEFAULT: 'hsl(var(--line))',
+          strong: 'hsl(var(--line-strong))',
+        },
+        danger: {
+          DEFAULT: 'hsl(var(--danger))',
+          fg: 'hsl(var(--danger-fg))',
+          soft: 'hsl(var(--danger-soft))',
+        },
+        'accent-soft': 'hsl(var(--accent-soft))',
+
+        /* shadcn semantic tokens */
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',

@@ -4,48 +4,92 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* ─── Tech-utility palette ───────────────────────────────────────── */
+    /* Neutral grays, one saturated accent. Linear/Raycast/Vercel inflected.
+       Pure hue (0% saturation) means warm/cool drift never sneaks in. */
+    --surface: 0 0% 99%;
+    --surface-1: 0 0% 97%;
+    --surface-2: 0 0% 95%;
+    --fg: 0 0% 9%;
+    --fg-2: 0 0% 32%;
+    --fg-3: 0 0% 45%;
+    --fg-muted: 0 0% 58%;
+    --line: 0 0% 92%;
+    --line-strong: 0 0% 86%;
+
+    /* Single saturated accent. Electric blue, not purple. Used only on
+       primary affordances and active/focused states. */
+    --accent-hsl: 215 100% 50%;
+    --accent-fg: 0 0% 100%;
+    --accent-soft: 215 100% 96%;
+
+    /* Semantic red (recording, destructive). Distinct from the accent so
+       the eye can't confuse "primary action" with "active recording". */
+    --danger: 0 72% 51%;
+    --danger-fg: 0 0% 100%;
+    --danger-soft: 0 72% 96%;
+
+    /* ─── Shadcn semantic tokens ─────────────────────────────────────── */
+    --background: 0 0% 99%;
+    --foreground: 0 0% 9%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 0 0% 9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --radius: 0.5rem;
+    --popover-foreground: 0 0% 9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 99%;
+    --secondary: 0 0% 95%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 95%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 215 100% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 92%;
+    --input: 0 0% 92%;
+    --ring: 215 100% 50%;
+    --radius: 0.375rem;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --surface: 0 0% 4%;
+    --surface-1: 0 0% 7%;
+    --surface-2: 0 0% 11%;
+    --fg: 0 0% 98%;
+    --fg-2: 0 0% 74%;
+    --fg-3: 0 0% 62%;
+    --fg-muted: 0 0% 48%;
+    --line: 0 0% 14%;
+    --line-strong: 0 0% 22%;
+
+    --accent-hsl: 215 100% 60%;
+    --accent-fg: 0 0% 100%;
+    --accent-soft: 215 70% 14%;
+
+    --danger: 0 65% 60%;
+    --danger-fg: 0 0% 100%;
+    --danger-soft: 0 55% 14%;
+
+    --background: 0 0% 4%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 4%;
+    --secondary: 0 0% 11%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 11%;
+    --muted-foreground: 0 0% 62%;
+    --accent: 215 100% 60%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 65% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 14%;
+    --input: 0 0% 14%;
+    --ring: 215 100% 60%;
   }
 }
 
@@ -53,7 +97,272 @@
   * {
     @apply border-border;
   }
+
+  html {
+    background-color: hsl(var(--surface));
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-mona), system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    font-feature-settings: 'ss01', 'ss03', 'cv11';
+  }
+
+  ::selection {
+    background-color: hsl(var(--accent-hsl) / 0.2);
+    color: hsl(var(--fg));
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--fg) / 0.14);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--fg) / 0.28);
+  }
+}
+
+@layer components {
+  /* Small metadata label. Less tracked than the editorial version; still
+     uppercase but in the body sans now, not mono. */
+  .eyebrow {
+    font-size: 0.6875rem;
+    line-height: 1;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: hsl(var(--fg-muted));
+    font-weight: 500;
+  }
+
+  /* Tabular-nums for stable numeric columns. */
+  .num {
+    font-family: var(--font-mono), 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.005em;
+  }
+
+  /* Single-pixel divider. Used in place of boxed sections. */
+  .hairline {
+    height: 1px;
+    background-color: hsl(var(--line));
+  }
+
+  /* Dense data row — used by the meeting list. ~64px tall, neutral
+     hover, hairline border. */
+  .data-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 0.875rem 1.25rem;
+    border: 1px solid hsl(var(--line));
+    background-color: hsl(var(--card));
+    transition:
+      background-color 120ms ease,
+      border-color 120ms ease;
+  }
+  .data-row:hover {
+    background-color: hsl(var(--surface-1));
+    border-color: hsl(var(--line-strong));
+  }
+
+  /* Primary affordance — solid accent. Sharp, decisive, single-color. */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: hsl(var(--accent-fg));
+    background-color: hsl(var(--accent-hsl));
+    border: 1px solid hsl(var(--accent-hsl));
+    border-radius: var(--radius);
+    transition:
+      background-color 120ms ease,
+      filter 120ms ease;
+  }
+  .btn-primary:hover:not(:disabled) {
+    filter: brightness(1.1);
+  }
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Secondary affordance — bordered, neutral fill, accent ring on focus. */
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: hsl(var(--fg));
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--line-strong));
+    border-radius: var(--radius);
+    transition:
+      background-color 120ms ease,
+      border-color 120ms ease;
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background-color: hsl(var(--surface-1));
+    border-color: hsl(var(--fg-muted));
+  }
+  .btn-secondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Danger — solid red. Reserved for active recording and destructive
+     irreversible actions. */
+  .btn-danger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: hsl(var(--danger-fg));
+    background-color: hsl(var(--danger));
+    border: 1px solid hsl(var(--danger));
+    border-radius: var(--radius);
+    transition: filter 120ms ease;
+  }
+  .btn-danger:hover:not(:disabled) {
+    filter: brightness(1.05);
+  }
+
+  /* Underline-only input — no box around it. Focus state is a single
+     line in accent. */
+  .field-underline {
+    width: 100%;
+    border: 0;
+    border-bottom: 1px solid hsl(var(--line-strong));
+    background-color: transparent;
+    padding: 0.5rem 0;
+    color: hsl(var(--fg));
+    transition: border-color 120ms ease;
+  }
+  .field-underline::placeholder {
+    color: hsl(var(--fg-muted));
+  }
+  .field-underline:focus {
+    outline: none;
+    border-bottom-color: hsl(var(--accent-hsl));
+  }
+
+  /* Pulse for the recording dot. Semantic red, distinct from the accent. */
+  .record-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 9999px;
+    background-color: hsl(var(--danger));
+    box-shadow: 0 0 0 0 hsl(var(--danger) / 0.55);
+    animation: record-pulse 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes record-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 hsl(var(--danger) / 0.55);
+    }
+    70% {
+      box-shadow: 0 0 0 10px hsl(var(--danger) / 0);
+    }
+  }
+
+  /* Streaming-text cursor — a single foreground block at the tail. */
+  .streaming-cursor::after {
+    content: '';
+    display: inline-block;
+    width: 0.4em;
+    height: 1.05em;
+    background-color: hsl(var(--fg));
+    vertical-align: text-bottom;
+    margin-left: 0.05em;
+    animation: streaming-blink 1.05s steps(2, end) infinite;
+  }
+
+  @keyframes streaming-blink {
+    0%,
+    49% {
+      opacity: 1;
+    }
+    50%,
+    100% {
+      opacity: 0;
+    }
+  }
+
+  /* Neutral skeleton shimmer. */
+  .skeleton-shimmer {
+    background-color: hsl(var(--surface-2));
+    background-image: linear-gradient(
+      90deg,
+      transparent 0,
+      hsl(var(--fg) / 0.04) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
+    border-radius: var(--radius);
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -100% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  /* Tightened reveal — 40-280ms instead of 60-480ms. */
+  .reveal {
+    opacity: 0;
+    transform: translateY(4px);
+    animation: reveal-in 500ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .reveal-1 {
+    animation-delay: 40ms;
+  }
+  .reveal-2 {
+    animation-delay: 100ms;
+  }
+  .reveal-3 {
+    animation-delay: 160ms;
+  }
+  .reveal-4 {
+    animation-delay: 220ms;
+  }
+  .reveal-5 {
+    animation-delay: 280ms;
+  }
+
+  @keyframes reveal-in {
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .text-pretty {
+    text-wrap: pretty;
   }
 }

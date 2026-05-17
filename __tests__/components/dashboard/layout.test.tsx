@@ -47,16 +47,19 @@ describe('<DashboardLayout />', () => {
   it('renders a Sign out button when authenticated', () => {
     act(() => useAuthStore.getState().setUser(alice))
     render(<DashboardLayout>dashboard children</DashboardLayout>)
-    expect(
-      screen.getByRole('button', { name: /sign out/i }),
-    ).toBeInTheDocument()
+    // Both the desktop spine and the mobile top-bar each render a sign-out
+    // affordance; CSS hides one or the other per viewport. At least one
+    // must be in the DOM.
+    const buttons = screen.getAllByRole('button', { name: /sign out/i })
+    expect(buttons.length).toBeGreaterThan(0)
   })
 
   it('Sign out clears the auth state and redirects to /login', async () => {
     act(() => useAuthStore.getState().setUser(alice))
     render(<DashboardLayout>dashboard children</DashboardLayout>)
 
-    await userEvent.click(screen.getByRole('button', { name: /sign out/i }))
+    const buttons = screen.getAllByRole('button', { name: /sign out/i })
+    await userEvent.click(buttons[0])
 
     expect(useAuthStore.getState().user).toBeNull()
     expect(useAuthStore.getState().isAuthenticated).toBe(false)

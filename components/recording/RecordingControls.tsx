@@ -1,9 +1,9 @@
 'use client'
 
+import { Mic, Square } from 'lucide-react'
 import { useEffect } from 'react'
 
 import { RecordingTimer } from '@/components/recording/RecordingTimer'
-import { Button } from '@/components/ui/button'
 import { useRecording } from '@/lib/hooks/useRecording'
 
 export interface RecordingControlsProps {
@@ -18,20 +18,41 @@ export function RecordingControls({ onAudioBlob }: RecordingControlsProps) {
   }, [audioBlob, onAudioBlob])
 
   const isRecording = status === 'recording'
+  const isStopped = status === 'stopped'
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-wrap items-center gap-4">
       {isRecording ? (
         <>
-          <Button type="button" variant="destructive" onClick={stop}>
+          <button type="button" onClick={stop} className="btn-danger">
+            <Square className="h-3 w-3 fill-current" strokeWidth={0} />
             Stop
-          </Button>
-          <RecordingTimer elapsed={elapsed} />
+          </button>
+          <div className="flex items-center gap-2.5">
+            <span className="record-dot" aria-hidden="true" />
+            <RecordingTimer elapsed={elapsed} />
+          </div>
         </>
       ) : (
-        <Button type="button" onClick={() => start()}>
-          {status === 'stopped' ? 'Re-record' : 'Start recording'}
-        </Button>
+        <>
+          <button
+            type="button"
+            onClick={() => start()}
+            className="btn-primary"
+          >
+            <Mic className="h-3.5 w-3.5" strokeWidth={1.75} />
+            {isStopped ? 'Re-record' : 'Start recording'}
+          </button>
+          {isStopped && (
+            <span className="flex items-center gap-2 text-xs text-fg-3">
+              <span
+                className="h-1.5 w-1.5 rounded-full bg-fg-muted"
+                aria-hidden="true"
+              />
+              Stopped at <RecordingTimer elapsed={elapsed} />
+            </span>
+          )}
+        </>
       )}
     </div>
   )

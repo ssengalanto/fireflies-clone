@@ -1,6 +1,5 @@
 'use client'
 
-import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
@@ -9,7 +8,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
 import { useLoginForm } from '@/lib/hooks/useLoginForm'
 
 export function LoginForm() {
@@ -22,17 +20,21 @@ export function LoginForm() {
           control={form.control}
           name="email"
           render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
+            <FormItem className="space-y-1.5">
+              <FormLabel htmlFor="login-email" className="eyebrow">
+                Email
+              </FormLabel>
               <FormControl>
-                <Input
+                <input
+                  id="login-email"
                   type="email"
                   autoComplete="email"
                   placeholder="alice@example.com"
+                  className="h-10 w-full rounded-md border border-line bg-surface-1 px-3 text-sm text-fg placeholder:text-fg-muted focus:border-accent focus:outline-none focus:ring-0"
                   {...field}
                 />
               </FormControl>
-              <FormMessage />
+              <FormMessage className="text-xs text-danger" />
             </FormItem>
           )}
         />
@@ -40,27 +42,41 @@ export function LoginForm() {
           control={form.control}
           name="password"
           render={({ field }) => (
-            <FormItem>
-              <FormLabel>Password</FormLabel>
+            <FormItem className="space-y-1.5">
+              <FormLabel htmlFor="login-password" className="eyebrow">
+                Password
+              </FormLabel>
               <FormControl>
-                <Input
+                <input
+                  id="login-password"
                   type="password"
                   autoComplete="current-password"
+                  placeholder="••••••"
+                  className="h-10 w-full rounded-md border border-line bg-surface-1 px-3 text-sm text-fg placeholder:text-fg-muted focus:border-accent focus:outline-none focus:ring-0"
                   {...field}
                 />
               </FormControl>
-              <FormMessage />
+              <FormMessage className="text-xs text-danger" />
             </FormItem>
           )}
         />
+
         {error && (
-          <p role="alert" className="text-sm text-destructive">
+          <p
+            role="alert"
+            className="rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-fg"
+          >
             {error.message}
           </p>
         )}
-        <Button type="submit" disabled={isPending} className="w-full">
+
+        <button
+          type="submit"
+          disabled={isPending}
+          className="btn-primary !w-full !justify-center !py-2.5"
+        >
           {isPending ? 'Signing in…' : 'Sign in'}
-        </Button>
+        </button>
       </form>
     </Form>
   )
