@@ -26,12 +26,25 @@ pnpm dev    # http://localhost:3000
 | `ANTHROPIC_API_KEY` | yes | Read once in `app/api/claude/route.ts`. **Never** prefix with `NEXT_PUBLIC_` — that would inline it into the client bundle at build time. |
 | `OPENAI_API_KEY` | yes | Read once in `app/api/transcribe/route.ts` for `whisper-1` automatic transcription. **Never** prefix with `NEXT_PUBLIC_`. See [`specs/002-recording-transcription/contracts/transcribe.md`](specs/002-recording-transcription/contracts/transcribe.md) for the full wire contract. |
 | `NEXT_PUBLIC_APP_NAME` | no | Cosmetic; defaults to `"Fireflies Clone"`. |
+| `BASIC_AUTH_USER` | no | When set together with `BASIC_AUTH_PASSWORD`, gates the entire deployment (UI + every `/api/*` route) behind HTTP Basic Auth via `middleware.ts`. Intended for public Vercel URLs so the metered Anthropic / OpenAI routes can't be abused. Leave unset locally to disable. |
+| `BASIC_AUTH_PASSWORD` | no | Pairs with `BASIC_AUTH_USER`. If either is empty/unset, the gate is a no-op. |
 
 A static security test (`__tests__/security/api-key-isolation.test.ts`) asserts that:
 1. `@anthropic-ai/sdk` is imported by exactly one file (the Claude route handler).
 2. `openai` is imported by exactly one file (the transcribe route handler).
 3. `process.env.ANTHROPIC_API_KEY` and `process.env.OPENAI_API_KEY` are read directly in their respective routes.
 4. No `NEXT_PUBLIC_*ANTHROPIC*` or `NEXT_PUBLIC_*OPENAI*` variable exists in `.env.example`.
+
+## Public deployment gate (HTTP Basic Auth)
+
+A single `middleware.ts` at the project root sits in front of every request and, when both `BASIC_AUTH_USER` and `BASIC_AUTH_PASSWORD` are set, requires HTTP Basic Auth before anything (UI page or API route) is served. This exists so a public Vercel URL doesn't expose `/api/claude` and `/api/transcribe` — the two routes that spend real money — as an open faucet.
+
+- **Opt-in by configuration.** If either env var is unset or empty, the middleware is a no-op. `pnpm dev` keeps working without setup; on Vercel you set both vars and the gate is always on.
+- **Coverage.** The matcher gates everything except `_next/static`, `_next/image`, `favicon.ico`, and `robots.txt`. The stub `/api/auth/login` is **inside** the gate — it is not a way around it.
+- **Mechanics.** On missing or wrong credentials, the middleware returns `401 WWW-Authenticate: Basic realm="Fireflies Clone", charset="UTF-8"`, which makes browsers prompt natively and lets `curl -u user:pass` work for API testing. Comparison is constant-time over UTF-8 char codes (the Edge runtime has no `node:crypto`/`Buffer`), and the decoded header is split on the **first** colon so passwords containing `:` are supported.
+- **Enable on Vercel.** Project Settings → Environment Variables → add `BASIC_AUTH_USER` and `BASIC_AUTH_PASSWORD` (Production, and Preview if you want previews gated too) → redeploy.
+
+This is a deployment access gate, not application-level auth. The in-app stub login at `/api/auth/login` is unchanged (see _Limitations / out of scope_).
 
 ## Scripts
 
@@ -112,7 +125,7 @@ The conventions live in `.claude/skills/fireflies-*` and are exercised by the te
 
 ## Limitations / out of scope
 
-- No real authentication. `/api/auth/login` accepts any valid email + password ≥ 6 chars; the session is the client-side `authStore`. Swap-in seam for a real IdP is the `authStore` + the login route.
+- No real application-level authentication. `/api/auth/login` accepts any valid email + password ≥ 6 chars; the session is the client-side `authStore`. Swap-in seam for a real IdP is the `authStore` + the login route. (For public Vercel deployments, the separate HTTP Basic Auth gate above keeps the metered API routes from being abused — that gate is deployment access, not user identity.)
 - No cross-device sync. localStorage only.
 - **Transcription is batch, not live.** The audio is uploaded after the user stops the recording; there is no live captioning during capture. Live partials are out of scope.
 - **Maximum recording size is 25 MB** — Whisper's hard cap. On default `MediaRecorder` settings (opus @ ~24 kbps) that is roughly 2+ hours of audio, but on Vercel's Hobby tier the request body cap is 4.5 MB, which effectively caps audio to ~25 minutes. Longer recordings surface the `TranscriptionFallback` with `TOO_LARGE` and Retry hidden.
