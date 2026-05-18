@@ -10,7 +10,11 @@ import type {
 const SEED_PATH = path.resolve(process.cwd(), 'data/meetings.seed.json')
 
 const store: Map<string, Meeting> = new Map()
-let seeded = false
+// Promise-based seed gate. A boolean flag would race under concurrent
+// first-requests (set true before the await completes → second caller
+// returns to an empty store while the first is still loading). Caching
+// the in-flight promise lets all callers await the same single read.
+let seedingPromise: Promise<void> | null = null
 
 export interface ListOptions {
   search?: string
@@ -27,21 +31,23 @@ export interface ListResult {
 const DEFAULT_LIMIT = 20
 
 export async function seedFromFile(): Promise<void> {
-  if (seeded) return
-  seeded = true
-  try {
-    const raw = await readFile(SEED_PATH, 'utf-8')
-    const meetings = JSON.parse(raw) as Meeting[]
-    for (const m of meetings) {
-      store.set(m.id, m)
+  if (seedingPromise) return seedingPromise
+  seedingPromise = (async () => {
+    try {
+      const raw = await readFile(SEED_PATH, 'utf-8')
+      const meetings = JSON.parse(raw) as Meeting[]
+      for (const m of meetings) {
+        store.set(m.id, m)
+      }
+    } catch (err: unknown) {
+      if ((err as NodeJS.ErrnoException)?.code === 'ENOENT') {
+        // Seed file is optional. Empty store is the legal cold-start state.
+        return
+      }
+      throw err
     }
-  } catch (err: unknown) {
-    if ((err as NodeJS.ErrnoException)?.code === 'ENOENT') {
-      // Seed file is optional. Empty store is the legal cold-start state.
-      return
-    }
-    throw err
-  }
+  })()
+  return seedingPromise
 }
 
 /**
@@ -154,7 +160,7 @@ export function list(opts: ListOptions): ListResult {
 // each test starts from a known-empty state.
 export function __resetMeetingStoreForTests(): void {
   store.clear()
-  seeded = false
+  seedingPromise = null
 }
 
 // Internals --------------------------------------------------------------

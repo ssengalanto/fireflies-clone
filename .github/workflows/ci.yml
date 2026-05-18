@@ -50,3 +50,22 @@ jobs:
             exit 1
           fi
           echo "Client bundle is clean."
+
+      # Playwright e2e — covers login, dashboard read + drill-in, and the
+      # new-meeting modal with the custom DateTimePicker. Browsers are
+      # installed with --with-deps to pick up the right shared libs on
+      # ubuntu-latest. The Playwright config's webServer starts `pnpm dev`
+      # on :3001 with the Basic Auth gate disabled (empty env vars).
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: E2E (Playwright)
+        run: pnpm test:e2e
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

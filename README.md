@@ -58,7 +58,13 @@ pnpm lint             # next lint (extends core-web-vitals + import/order)
 pnpm test             # full Jest suite (--passWithNoTests)
 pnpm test:watch       # TDD watch loop
 pnpm test:coverage    # writes a coverage/ report; enforces thresholds on lib/
+
+pnpm test:e2e         # Playwright end-to-end suite (chromium, auto-starts pnpm dev :3001)
+pnpm test:e2e:ui      # Playwright UI mode for local debugging
+pnpm test:e2e:install # one-time browser + system-deps install (`playwright install --with-deps chromium`)
 ```
+
+The Playwright suite (`e2e/`) covers three flows — login → dashboard, dashboard read + drill-into-detail, and creating a meeting via the modal exercising the custom `DateTimePicker`. It deliberately avoids the metered routes (`/api/claude`, `/api/transcribe`) — those are integration-tested in Jest. Playwright's `webServer` config disables the Basic Auth gate by setting `BASIC_AUTH_USER` / `BASIC_AUTH_PASSWORD` to empty so the suite doesn't need credentials regardless of your `.env`.
 
 ## Architecture map
 
