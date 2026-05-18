@@ -38,6 +38,10 @@ export default function MeetingDetailPage({
   const { data: meeting, error, isLoading } = useMeeting(params.id)
   const [pendingAudio, setPendingAudio] = useState<Blob | null>(null)
   const [recorderEpoch, setRecorderEpoch] = useState(0)
+  // Remount-key for <TranscriptionReview/>. Bumped when the user re-records
+  // from inside RecordingControls so any prior produced transcript +
+  // TranscriptEditor state are discarded before the new recording starts.
+  const [reviewEpoch, setReviewEpoch] = useState(0)
 
   if (isLoading) {
     return (
@@ -119,16 +123,22 @@ export default function MeetingDetailPage({
             <RecordingControls
               key={recorderEpoch}
               onAudioBlob={setPendingAudio}
+              onReRecord={() => {
+                setPendingAudio(null)
+                setReviewEpoch((e) => e + 1)
+              }}
             />
           </div>
 
           <TranscriptionReview
+            key={reviewEpoch}
             meetingId={meeting.id}
             audioBlob={pendingAudio}
             onSettled={() => setPendingAudio(null)}
             onReRecord={() => {
               setPendingAudio(null)
               setRecorderEpoch((e) => e + 1)
+              setReviewEpoch((e) => e + 1)
             }}
           />
 

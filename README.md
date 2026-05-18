@@ -153,7 +153,7 @@ Tests:       233 passed, 233 total
 | API routes (meetings ×2, claude, auth/login) | 4 | 26 |
 | Security | 1 | 3 (`api-key-isolation`) |
 
-### After feature 002 (current)
+### After feature 002
 
 ```
 Test Suites: 52 passed, 52 total
@@ -171,6 +171,15 @@ What feature 002 added on top of v1:
 | API routes (`transcribe.route`) | 1 | 9 |
 | Cache keys + Security (extensions to existing files) | — | 4 |
 | **Total added** | **14** | **75** |
+
+### Current
+
+```
+Test Suites: 52 passed, 52 total
+Tests:       311 passed, 311 total
+```
+
+Three regression tests landed with the re-record stale-state fix — 1 page-integration in `meeting-detail.transcription.test.tsx` (clicking Re-record drops the stale auto-produced transcript from every editor on the page) and 2 unit tests in `recording/RecordingControls.test.tsx` (fires `onReRecord` when clicking Re-record from the stopped state; does NOT fire it on the very first Start click from idle). The HTTP Basic Auth gate did not add automated tests — its contract is small enough to verify end-to-end with `curl` against `pnpm dev`.
 
 ## Time estimate (by hand / no AI-assist)
 
@@ -210,7 +219,10 @@ Derived from git history:
 
 - **Feature 001**: first commit `2026-05-17 20:30 +0800` → tag at `2026-05-18 01:29 +0800` ≈ **~5 hours** wall-clock, single contiguous session.
 - **Feature 002**: appended in the same session immediately after 001, finishing at `2026-05-18 02:50 +0800` ≈ **~1.5 hours** wall-clock for the additive 36 tasks.
-- **Combined**: **~6.5 hours** wall-clock across both features.
+- **Additional hardening** (`2026-05-18` morning, separate session): the public deployment gate (HTTP Basic Auth via `middleware.ts`) and the re-record stale-state bug fix ≈ **~1.25 hours** wall-clock. Breakdown:
+  - Deployment gate: brainstorm → plan → middleware + `.env.example` + README → `pnpm typecheck` + `pnpm build` + live `curl` smoke tests against `pnpm dev` (gate disabled, gate enabled, wrong creds, password-with-colon, stub login still gated). No new automated tests — the contract is small enough to verify end-to-end. ≈ **~30 min**.
+  - Re-record bug fix: TDD — three regression tests written first (1 page-integration, 2 `RecordingControls` unit), confirmed red, then `onReRecord` callback on `RecordingControls` + `reviewEpoch` key on `<TranscriptionReview>` in the page, confirmed green. Suite went from 308 → 311 tests across 52 suites. ≈ **~45 min**.
+- **Combined**: **~7.75 hours** wall-clock end-to-end.
 
 ## Where to read next
 

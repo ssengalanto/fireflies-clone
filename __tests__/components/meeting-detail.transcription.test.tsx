@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
 import MeetingDetailPage from '@/app/(dashboard)/meetings/[id]/page'
 import { useMeeting } from '@/lib/hooks/useMeeting'
@@ -118,6 +119,79 @@ describe('Meeting detail page — auto-transcription wiring', () => {
 
     // Save must NOT fire automatically — that's the whole point of US2.
     expect(save).not.toHaveBeenCalled()
+  })
+
+  it('drops the stale auto-produced transcript when the user clicks Re-record', async () => {
+    const blob = new Blob([new Uint8Array(1024)], { type: 'audio/webm' })
+    const transcribe = jest.fn().mockResolvedValue({
+      transcript: 'Stale produced transcript.',
+      durationSeconds: 7,
+    })
+    const start = jest.fn().mockResolvedValue(undefined)
+
+    mockUseMeeting.mockReturnValue({
+      data: meeting(null),
+      error: undefined,
+      isLoading: false,
+      isValidating: false,
+      mutate: jest.fn(),
+    } as unknown as ReturnType<typeof useMeeting>)
+
+    mockUseRecording.mockReturnValue({
+      status: 'stopped',
+      elapsed: 12,
+      audioBlob: blob,
+      start: start as any,
+      stop: jest.fn(),
+      pause: jest.fn(),
+      resume: jest.fn(),
+      clearAudio: jest.fn(),
+    })
+
+    mockUseTranscribe.mockReturnValue({
+      trigger: transcribe,
+      reset: jest.fn(),
+      data: undefined,
+      error: undefined,
+      isMutating: false,
+    })
+
+    mockUseSave.mockReturnValue({
+      trigger: jest.fn().mockResolvedValue(undefined),
+      reset: jest.fn(),
+      data: undefined,
+      error: undefined,
+      isMutating: false,
+    } as unknown as ReturnType<typeof useUpdateTranscript>)
+
+    render(<MeetingDetailPage params={{ id: 'mtg_1' }} />, {
+      wrapper: createTestWrapper(),
+    })
+
+    // The auto-produced text lands in one of the editors.
+    await waitFor(() => {
+      const textareas = screen.getAllByLabelText(
+        /transcript/i,
+      ) as HTMLTextAreaElement[]
+      expect(
+        textareas.some((t) => t.value === 'Stale produced transcript.'),
+      ).toBe(true)
+    })
+
+    // User clicks Re-record (the button shown by RecordingControls in the
+    // stopped state). After that, the stale produced text must no longer be
+    // sitting in any transcript editor on the page — the user expects a
+    // clean slate to re-record into.
+    await userEvent.click(screen.getByRole('button', { name: /re-record/i }))
+
+    await waitFor(() => {
+      const textareas = screen.queryAllByLabelText(
+        /transcript/i,
+      ) as HTMLTextAreaElement[]
+      expect(
+        textareas.some((t) => t.value === 'Stale produced transcript.'),
+      ).toBe(false)
+    })
   })
 
   it('renders the in-progress indicator while isMutating', () => {

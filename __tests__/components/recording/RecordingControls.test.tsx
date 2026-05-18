@@ -54,4 +54,34 @@ describe('<RecordingControls />', () => {
     render(<RecordingControls onAudioBlob={jest.fn()} />)
     expect(screen.getByText('2:05')).toBeInTheDocument()
   })
+
+  it('fires onReRecord (then start()) when the user clicks Re-record from the stopped state', async () => {
+    const start = jest.fn().mockResolvedValue(undefined)
+    const onReRecord = jest.fn()
+    mockHook({ status: 'stopped', elapsed: 7, start: start as any })
+    render(
+      <RecordingControls
+        onAudioBlob={jest.fn()}
+        onReRecord={onReRecord}
+      />,
+    )
+    await userEvent.click(screen.getByRole('button', { name: /re-record/i }))
+    expect(onReRecord).toHaveBeenCalledTimes(1)
+    expect(start).toHaveBeenCalledTimes(1)
+  })
+
+  it('does NOT fire onReRecord when clicking Start from the idle state', async () => {
+    const start = jest.fn().mockResolvedValue(undefined)
+    const onReRecord = jest.fn()
+    mockHook({ start: start as any })
+    render(
+      <RecordingControls
+        onAudioBlob={jest.fn()}
+        onReRecord={onReRecord}
+      />,
+    )
+    await userEvent.click(screen.getByRole('button', { name: /start/i }))
+    expect(start).toHaveBeenCalledTimes(1)
+    expect(onReRecord).not.toHaveBeenCalled()
+  })
 })

@@ -8,9 +8,17 @@ import { useRecording } from '@/lib/hooks/useRecording'
 
 export interface RecordingControlsProps {
   onAudioBlob: (blob: Blob) => void
+  // Fired when the user clicks the in-controls "Re-record" button (i.e.
+  // starts a recording while in the stopped state). The parent uses it to
+  // drop the prior pending blob and reset any downstream review UI before
+  // the new recording begins.
+  onReRecord?: () => void
 }
 
-export function RecordingControls({ onAudioBlob }: RecordingControlsProps) {
+export function RecordingControls({
+  onAudioBlob,
+  onReRecord,
+}: RecordingControlsProps) {
   const { status, elapsed, audioBlob, start, stop } = useRecording()
 
   useEffect(() => {
@@ -19,6 +27,11 @@ export function RecordingControls({ onAudioBlob }: RecordingControlsProps) {
 
   const isRecording = status === 'recording'
   const isStopped = status === 'stopped'
+
+  const handleStartClick = () => {
+    if (isStopped) onReRecord?.()
+    void start()
+  }
 
   return (
     <div className="flex flex-wrap items-center gap-4">
@@ -37,7 +50,7 @@ export function RecordingControls({ onAudioBlob }: RecordingControlsProps) {
         <>
           <button
             type="button"
-            onClick={() => start()}
+            onClick={handleStartClick}
             className="btn-primary"
           >
             <Mic className="h-3.5 w-3.5" strokeWidth={1.75} />
