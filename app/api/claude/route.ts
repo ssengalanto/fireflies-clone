@@ -13,7 +13,18 @@ import {
 // or to touch `ANTHROPIC_API_KEY`. The variable is read directly from
 // `process.env` (no proxy module) so Next.js's compile-time inlining of
 // `NEXT_PUBLIC_*` can never accidentally bake it into the client bundle.
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+//
+// Initialised lazily for symmetry with the transcribe route: Next's
+// "Collecting page data" build step imports every route handler, so any
+// SDK that throws on a missing apiKey at construction would break
+// `pnpm build` in environments without the key (CI, preview deploys).
+let _client: Anthropic | undefined
+function getClient(): Anthropic {
+  if (!_client) {
+    _client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  }
+  return _client
+}
 
 export async function POST(req: Request) {
   let body: unknown
@@ -47,7 +58,7 @@ async function handleActionItems(
 
   let message: unknown
   try {
-    message = await client.messages.create({
+    message = await getClient().messages.create({
       model: MODEL,
       max_tokens: 1024,
       system: buildActionItemsPrompt(),
@@ -109,7 +120,7 @@ function handleSummary(meetingId: string, transcript: string): Response {
 
   let sdkStream: AsyncIterable<unknown>
   try {
-    sdkStream = client.messages.stream({
+    sdkStream = getClient().messages.stream({
       model: MODEL,
       max_tokens: 1024,
       system: buildSummaryPrompt(),

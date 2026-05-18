@@ -7,7 +7,19 @@ import { NextResponse } from 'next/server'
 // never accidentally bake it into the client bundle. The static security
 // test in `__tests__/security/api-key-isolation.test.ts` enforces both
 // invariants on every CI run.
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+//
+// The client is initialised lazily on first request rather than at module
+// load: Next's "Collecting page data" build step imports every route
+// handler, and the OpenAI constructor throws synchronously when its
+// `apiKey` is missing — which would fail `pnpm build` on any environment
+// (CI, preview deploy) that doesn't ship the key at build time.
+let _client: OpenAI | undefined
+function getClient(): OpenAI {
+  if (!_client) {
+    _client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  }
+  return _client
+}
 
 const MODEL = 'whisper-1'
 const MAX_AUDIO_BYTES = 25 * 1024 * 1024
@@ -80,7 +92,7 @@ export async function POST(req: Request): Promise<Response> {
 
   let result: { text?: unknown; duration?: unknown; segments?: unknown }
   try {
-    result = (await client.audio.transcriptions.create({
+    result = (await getClient().audio.transcriptions.create({
       file: audio,
       model: MODEL,
       response_format: 'verbose_json',
