@@ -4,10 +4,14 @@ import {
   meetingSchema,
 } from '@/lib/schemas/meeting.schema'
 
+// Use a clearly-future date so the past-date refine (createMeetingSchema only)
+// keeps passing as time marches on. The base `meetingSchema` doesn't care
+// about past-vs-future; it's used for parsing existing meetings whose date
+// can legitimately be in the past.
 const validCreateInput = {
   title: 'Standup',
   participants: ['alice@example.com'],
-  date: '2026-05-17T10:00:00.000Z',
+  date: '2030-01-01T10:00:00.000Z',
 }
 
 const validMeeting = {
@@ -77,6 +81,31 @@ describe('createMeetingSchema', () => {
       date: 'tomorrow',
     })
     expect(result.success).toBe(false)
+  })
+
+  it('rejects a date earlier than today (start-of-day local)', () => {
+    // 2020-01-01 is clearly past in any realistic test-run year.
+    const result = createMeetingSchema.safeParse({
+      ...validCreateInput,
+      date: '2020-01-01T00:00:00.000Z',
+    })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0].message).toMatch(/past/i)
+      expect(result.error.issues[0].path).toEqual(['date'])
+    }
+  })
+
+  it('accepts a date within today (same calendar day, any time)', () => {
+    // Same day, any time: still valid. We compare at calendar-day granularity
+    // so users can log a meeting that just happened earlier today.
+    const today = new Date()
+    today.setHours(8, 30, 0, 0)
+    const result = createMeetingSchema.safeParse({
+      ...validCreateInput,
+      date: today.toISOString(),
+    })
+    expect(result.success).toBe(true)
   })
 })
 

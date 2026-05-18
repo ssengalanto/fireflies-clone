@@ -31,9 +31,10 @@ test.describe('new meeting modal', () => {
     const picker = page.getByRole('dialog', { name: /date and time picker/i })
     await expect(picker).toBeVisible()
 
-    // Pick a specific day in the month currently shown. We don't assert
-    // which month — the picker opens on whatever month the default value
-    // falls in. Day 15 always exists in every month.
+    // Jump forward one month before picking, so the day we click is
+    // unambiguously in the future (the picker disables days before today
+    // — see `minDate` on the trigger).
+    await picker.getByRole('button', { name: /next month/i }).click()
     const dayButton = picker.getByRole('button', { name: /\b15,\s+\d{4}$/ })
     await dayButton.click()
     await expect(dayButton).toHaveAttribute('aria-pressed', 'true')

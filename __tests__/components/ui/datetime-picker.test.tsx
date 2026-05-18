@@ -64,6 +64,35 @@ describe('<DateTimePicker />', () => {
     expect(emitted.getUTCMinutes()).toBe(0)
   })
 
+  it('disables day cells before minDate and keeps minDate itself clickable', async () => {
+    // View month: June 2026. minDate: June 10, 2026. Days 1–9 in June are
+    // before minDate and must be disabled; day 10 is the minimum and must
+    // still be clickable.
+    render(
+      <DateTimePicker
+        value="2026-06-15T12:00:00.000Z"
+        minDate={new Date('2026-06-10T00:00:00.000Z')}
+        onChange={jest.fn()}
+      />,
+    )
+    await userEvent.click(
+      screen.getByRole('button', { name: /06\/15\/2026/i }),
+    )
+
+    expect(
+      screen.getByRole('button', { name: /^June 5, 2026$/i }),
+    ).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: /^June 9, 2026$/i }),
+    ).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: /^June 10, 2026$/i }),
+    ).toBeEnabled()
+    expect(
+      screen.getByRole('button', { name: /^June 11, 2026$/i }),
+    ).toBeEnabled()
+  })
+
   it('flips the meridiem and emits a 12-hour-shifted ISO when AM → PM is toggled', async () => {
     const onChange = jest.fn()
     render(

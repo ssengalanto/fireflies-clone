@@ -21,11 +21,28 @@ export const meetingSchema = z.object({
 })
 export type Meeting = z.infer<typeof meetingSchema>
 
-export const createMeetingSchema = meetingSchema.pick({
-  title: true,
-  participants: true,
-  date: true,
-})
+// Compared at calendar-day granularity, not the full datetime — a meeting
+// dated earlier *today* is fine (capturing one that just happened); only
+// dates before today's local 00:00 are rejected.
+function isOnOrAfterToday(iso: string): boolean {
+  const day = new Date(iso)
+  if (Number.isNaN(day.getTime())) return false
+  day.setHours(0, 0, 0, 0)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return day.getTime() >= today.getTime()
+}
+
+export const createMeetingSchema = meetingSchema
+  .pick({
+    title: true,
+    participants: true,
+    date: true,
+  })
+  .refine((data) => isOnOrAfterToday(data.date), {
+    message: 'Date cannot be in the past',
+    path: ['date'],
+  })
 export type CreateMeetingInput = z.infer<typeof createMeetingSchema>
 
 export const actionItemSchema = z.object({

@@ -94,11 +94,15 @@ describe('useCreateMeetingForm', () => {
     const create = jest.fn().mockResolvedValue(created)
     mockUseCreate.mockReturnValue({ create, isCreating: false })
 
+    // Future-dated so the new past-date refine on `createMeetingSchema` lets
+    // this submit succeed. The "is the form wired to create()" assertion
+    // doesn't care about which valid date we pick.
+    const futureDate = '2030-01-01T10:00:00.000Z'
     useMeetingStore.setState({
       meetingDraft: {
         title: 'Standup',
         participants: ['alice@example.com'],
-        date: '2026-05-17T10:00:00.000Z',
+        date: futureDate,
       },
     })
     useUIStore.setState({ activeModal: 'new-meeting' })
@@ -114,7 +118,7 @@ describe('useCreateMeetingForm', () => {
     expect(create).toHaveBeenCalledWith({
       title: 'Standup',
       participants: ['alice@example.com'],
-      date: '2026-05-17T10:00:00.000Z',
+      date: futureDate,
     })
     expect(useMeetingStore.getState().meetingDraft).toBeNull()
     expect(useUIStore.getState().activeModal).toBeNull()

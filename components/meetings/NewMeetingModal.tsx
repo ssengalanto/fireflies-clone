@@ -131,6 +131,7 @@ export function NewMeetingModal() {
                       id="meeting-date"
                       value={field.value ?? ''}
                       onChange={field.onChange}
+                      minDate={new Date()}
                     />
                   </FormControl>
                   <FormMessage className="text-xs text-danger" />

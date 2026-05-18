@@ -10,6 +10,10 @@ export interface DateTimePickerProps {
   onChange: (next: string) => void
   id?: string
   className?: string
+  // Earliest selectable day. Comparison is at calendar-day granularity
+  // (year/month/day) — the time component is ignored. Days before this
+  // are rendered disabled and don't fire onChange when clicked.
+  minDate?: Date
 }
 
 const DOW_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
@@ -83,6 +87,7 @@ export function DateTimePicker({
   onChange,
   id,
   className,
+  minDate,
 }: DateTimePickerProps) {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -262,21 +267,33 @@ export function DateTimePicker({
                 c.y === todayLocal.getFullYear() &&
                 c.m === todayLocal.getMonth() &&
                 c.d === todayLocal.getDate()
+              const isBeforeMin =
+                minDate !== undefined &&
+                (c.y < minDate.getFullYear() ||
+                  (c.y === minDate.getFullYear() &&
+                    c.m < minDate.getMonth()) ||
+                  (c.y === minDate.getFullYear() &&
+                    c.m === minDate.getMonth() &&
+                    c.d < minDate.getDate()))
               return (
                 <button
                   key={i}
                   type="button"
                   onClick={() => emitDay(c)}
+                  disabled={isBeforeMin}
                   aria-label={`${MONTH_NAMES[c.m]} ${c.d}, ${c.y}`}
                   aria-pressed={isSelected}
                   className={cn(
                     'num h-7 rounded text-xs transition-colors',
-                    isSelected
-                      ? 'bg-[hsl(var(--accent-hsl))] text-[hsl(var(--accent-fg))]'
-                      : c.inMonth
-                        ? 'text-fg hover:bg-surface-2'
-                        : 'text-fg-muted hover:bg-surface-2',
-                    isToday && !isSelected && 'ring-1 ring-inset ring-line-strong',
+                    isBeforeMin
+                      ? 'cursor-not-allowed text-fg-muted/40'
+                      : isSelected
+                        ? 'bg-[hsl(var(--accent-hsl))] text-[hsl(var(--accent-fg))]'
+                        : c.inMonth
+                          ? 'text-fg hover:bg-surface-2'
+                          : 'text-fg-muted hover:bg-surface-2',
+                    isToday && !isSelected && !isBeforeMin &&
+                      'ring-1 ring-inset ring-line-strong',
                   )}
                 >
                   {c.d}

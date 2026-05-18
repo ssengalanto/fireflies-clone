@@ -30,7 +30,7 @@ describe('GET /api/meetings', () => {
       jsonReq('POST', '/api/meetings', {
         title: 'Standup',
         participants: ['alice@example.com'],
-        date: '2026-05-17T10:00:00.000Z',
+        date: '2030-01-01T10:00:00.000Z',
       }),
     )
     expect(createRes.status).toBe(201)
@@ -46,14 +46,14 @@ describe('GET /api/meetings', () => {
       jsonReq('POST', '/api/meetings', {
         title: 'Standup',
         participants: ['alice@example.com'],
-        date: '2026-05-17T10:00:00.000Z',
+        date: '2030-01-01T10:00:00.000Z',
       }),
     )
     await POST(
       jsonReq('POST', '/api/meetings', {
         title: 'Roadmap review',
         participants: ['bob@example.com'],
-        date: '2026-05-16T10:00:00.000Z',
+        date: '2030-01-02T10:00:00.000Z',
       }),
     )
     const res = await GET(jsonReq('GET', '/api/meetings?search=roadmap'))
@@ -69,7 +69,7 @@ describe('POST /api/meetings', () => {
       jsonReq('POST', '/api/meetings', {
         title: 'Standup',
         participants: ['alice@example.com'],
-        date: '2026-05-17T10:00:00.000Z',
+        date: '2030-01-01T10:00:00.000Z',
       }),
     )
     expect(res.status).toBe(201)
@@ -86,7 +86,7 @@ describe('POST /api/meetings', () => {
       jsonReq('POST', '/api/meetings', {
         title: '',
         participants: ['alice@example.com'],
-        date: '2026-05-17T10:00:00.000Z',
+        date: '2030-01-01T10:00:00.000Z',
       }),
     )
     expect(res.status).toBe(400)
@@ -99,7 +99,7 @@ describe('POST /api/meetings', () => {
       jsonReq('POST', '/api/meetings', {
         title: 'Standup',
         participants: [],
-        date: '2026-05-17T10:00:00.000Z',
+        date: '2030-01-01T10:00:00.000Z',
       }),
     )
     expect(res.status).toBe(400)
@@ -112,7 +112,7 @@ describe('POST /api/meetings', () => {
       jsonReq('POST', '/api/meetings', {
         title: 'Standup',
         participants: ['not-an-email'],
-        date: '2026-05-17T10:00:00.000Z',
+        date: '2030-01-01T10:00:00.000Z',
       }),
     )
     expect(res.status).toBe(400)
