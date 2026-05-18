@@ -181,11 +181,11 @@ What feature 002 added on top of v1:
 ### Current
 
 ```
-Test Suites: 52 passed, 52 total
-Tests:       311 passed, 311 total
+Jest:        53 suites, 315 tests       (~2.5 s)
+Playwright:  3 suites,   6 tests        (~7 s)
 ```
 
-Three regression tests landed with the re-record stale-state fix — 1 page-integration in `meeting-detail.transcription.test.tsx` (clicking Re-record drops the stale auto-produced transcript from every editor on the page) and 2 unit tests in `recording/RecordingControls.test.tsx` (fires `onReRecord` when clicking Re-record from the stopped state; does NOT fire it on the very first Start click from idle). The HTTP Basic Auth gate did not add automated tests — its contract is small enough to verify end-to-end with `curl` against `pnpm dev`.
+Jest added 7 tests over the feature-002 cut: 3 regression tests for the re-record stale-state fix (1 page-integration in `meeting-detail.transcription.test.tsx`, 2 unit in `recording/RecordingControls.test.tsx`) and 4 unit tests for the new `<DateTimePicker />` (trigger format, popover open, day-pick preserves time, AM↔PM toggle shifts 12 h). Playwright adds 6 e2e tests in `e2e/` covering login (× 3), dashboard read + drill-in (× 2), and creating a meeting via the `DateTimePicker` (× 1). The HTTP Basic Auth gate did not add automated tests — its contract is small enough to verify end-to-end with `curl` against `pnpm dev`.
 
 ## Time estimate (by hand / no AI-assist)
 
@@ -225,10 +225,13 @@ Derived from git history:
 
 - **Feature 001**: first commit `2026-05-17 20:30 +0800` → tag at `2026-05-18 01:29 +0800` ≈ **~5 hours** wall-clock, single contiguous session.
 - **Feature 002**: appended in the same session immediately after 001, finishing at `2026-05-18 02:50 +0800` ≈ **~1.5 hours** wall-clock for the additive 36 tasks.
-- **Additional hardening** (`2026-05-18` morning, separate session): the public deployment gate (HTTP Basic Auth via `middleware.ts`) and the re-record stale-state bug fix ≈ **~1.25 hours** wall-clock. Breakdown:
-  - Deployment gate: brainstorm → plan → middleware + `.env.example` + README → `pnpm typecheck` + `pnpm build` + live `curl` smoke tests against `pnpm dev` (gate disabled, gate enabled, wrong creds, password-with-colon, stub login still gated). No new automated tests — the contract is small enough to verify end-to-end. ≈ **~30 min**.
-  - Re-record bug fix: TDD — three regression tests written first (1 page-integration, 2 `RecordingControls` unit), confirmed red, then `onReRecord` callback on `RecordingControls` + `reviewEpoch` key on `<TranscriptionReview>` in the page, confirmed green. Suite went from 308 → 311 tests across 52 suites. ≈ **~45 min**.
-- **Combined**: **~7.75 hours** wall-clock end-to-end.
+- **Additional hardening** (`2026-05-18` morning, separate session) ≈ **~2 hours** wall-clock. Breakdown:
+  - **Public deployment gate (HTTP Basic Auth via `middleware.ts`)**: brainstorm → plan → middleware + `.env.example` + README → `pnpm typecheck` + `pnpm build` + live `curl` smoke tests against `pnpm dev` (gate disabled, gate enabled, wrong creds, password-with-colon, stub login still gated). No new automated tests — the contract is small enough to verify end-to-end. ≈ **~20 min**.
+  - **Re-record stale-state bug fix**: TDD — three regression tests written first (1 page-integration, 2 `RecordingControls` unit), confirmed red, then `onReRecord` callback on `RecordingControls` + `reviewEpoch` key on `<TranscriptionReview>` in the page, confirmed green. Suite went from 308 → 311 tests across 52 suites. ≈ **~20 min**.
+  - **CI build fix (lazy SDK init)**: `pnpm build` was failing on CI because the OpenAI SDK throws synchronously when constructed without `apiKey`, and Next's "Collecting page data" step imports every route module. Replaced the module-level `new OpenAI({...})` / `new Anthropic({...})` with lazy memoized getters; verified locally with `env -u OPENAI_API_KEY -u ANTHROPIC_API_KEY pnpm build`. Security tests (one-SDK-per-file, `process.env.X_API_KEY` text) still pass. ≈ **~10 min**.
+  - **UI/UX improvements**: Notion-style visual language for the whole surface — terse hierarchy with `eyebrow` labels above every heading, three-tier text-color palette (`fg`, `fg-2`, `fg-3`, `fg-muted`), thin `hairline` dividers, named status atoms (`record-dot`, `streaming-cursor`, `skeleton-shimmer`), staggered `reveal reveal-N` entry animations, and named button intents (`btn-primary`, `btn-secondary`, `btn-ghost`, `btn-danger`). ≈ **~60 min**.
+  - **Playwright e2e suite**: new `playwright.config.ts` (chromium-only, port 3001, gate disabled via empty env vars, reuse server locally / fresh in CI), `e2e/utils/auth.ts` helper, three spec files (auth × 3 tests, dashboard × 2, new-meeting × 1) covering login, dashboard read + drill-in, and creating a meeting through the `DateTimePicker`. CI workflow updated to install browsers + run the suite + upload reports on failure. Surfaced a real pre-existing **`seedFromFile` TOCTOU race** in `lib/server/meetingStore.ts` (boolean flag set before the `await readFile` → concurrent first-requests saw `seeded=true` while the store was still empty) — fixed by caching the in-flight promise. 6 tests, ~7s per run, stable across reruns. ≈ **~40 min** (most of which was diagnosing Zustand-persist hydration races, the `useFieldArray<string[]>` quirk, and the `DateTimePicker` viewport-overflow issue under default Chromium). Also expanded Jest to 53 suites / 315 tests.
+- **Combined**: **~9 hours** wall-clock end-to-end.
 
 ## Where to read next
 
