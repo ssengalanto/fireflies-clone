@@ -1,3 +1,8 @@
+// Pin the test timezone so locale-formatted assertions (calendar day
+// labels, AM/PM transitions) are deterministic across developer machines
+// and CI. Must run before anything constructs a Date.
+process.env.TZ = 'UTC'
+
 import '@testing-library/jest-dom'
 
 // jsdom does not ship a MediaRecorder or getUserMedia. Provide minimal shims

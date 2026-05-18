@@ -3,6 +3,7 @@
 import { Plus, X } from 'lucide-react'
 import { useFieldArray } from 'react-hook-form'
 
+import { DateTimePicker } from '@/components/ui/datetime-picker'
 import {
   Dialog,
   DialogContent,
@@ -126,22 +127,10 @@ export function NewMeetingModal() {
                     Date &amp; time
                   </FormLabel>
                   <FormControl>
-                    <input
+                    <DateTimePicker
                       id="meeting-date"
-                      type="datetime-local"
-                      className="num h-9 w-full rounded-md border border-line bg-surface-1 px-3 text-sm text-fg focus:border-accent focus:outline-none focus:ring-0"
-                      value={
-                        field.value
-                          ? new Date(field.value).toISOString().slice(0, 16)
-                          : ''
-                      }
-                      onChange={(e) =>
-                        field.onChange(
-                          e.target.value
-                            ? new Date(e.target.value).toISOString()
-                            : '',
-                        )
-                      }
+                      value={field.value ?? ''}
+                      onChange={field.onChange}
                     />
                   </FormControl>
                   <FormMessage className="text-xs text-danger" />
